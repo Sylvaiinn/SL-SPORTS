@@ -4,7 +4,25 @@ import Navbar from '@/components/Navbar'
 
 export const metadata: Metadata = {
   title: 'SPORTS.SL — Suivi Sportif',
-  description: 'Application de suivi de séances de musculation et de natation.',
+  description: 'Suivez vos séances de musculation et de natation avec SPORTS.SL. Historique, templates, générateur de séances.',
+  openGraph: {
+    title: 'SPORTS.SL — Suivi Sportif',
+    description: 'Suivez vos séances de musculation et de natation. Historique, templates, générateur de séances natation.',
+    type: 'website',
+    locale: 'fr_FR',
+    siteName: 'SPORTS.SL',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'SPORTS.SL — Suivi Sportif',
+    description: 'Application de suivi de musculation et natation.',
+  },
+  applicationName: 'SPORTS.SL',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'SPORTS.SL',
+  },
 }
 
 export default function RootLayout({

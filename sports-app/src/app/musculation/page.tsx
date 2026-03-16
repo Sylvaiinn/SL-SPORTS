@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Dumbbell, PlusCircle, Calendar, ChevronRight } from 'lucide-react'
+import ExportCSVButton from '@/components/ExportCSVButton'
 
 export default async function MuscuPage() {
   const supabase = await createClient()
@@ -22,9 +23,12 @@ export default async function MuscuPage() {
           <h1>Musculation</h1>
           <p>Historique de vos séances</p>
         </div>
-        <Link href="/musculation/new" className="btn btn-primary btn-sm" style={{ flexShrink: 0, marginTop: '0.25rem' }}>
-          <PlusCircle size={15} /> Nouvelle
-        </Link>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+          <ExportCSVButton />
+          <Link href="/musculation/new" className="btn btn-primary btn-sm" style={{ flexShrink: 0 }}>
+            <PlusCircle size={15} /> Nouvelle
+          </Link>
+        </div>
       </div>
 
       {!workouts || workouts.length === 0 ? (

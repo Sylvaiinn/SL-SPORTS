@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TEMPLATES, type Template } from '@/lib/templates'
-import { PlusCircle, Trash2, ChevronLeft, Save, Zap, Loader2 } from 'lucide-react'
+import { PlusCircle, Trash2, ChevronLeft, Save, Zap, Loader2, Clock } from 'lucide-react'
 
 interface SetEntry {
   set_number: number
@@ -33,6 +33,7 @@ export default function NewWorkoutPage() {
   const supabase = createClient()
   const [workoutName, setWorkoutName] = useState('')
   const [workoutDate, setWorkoutDate] = useState(new Date().toISOString().split('T')[0])
+  const [workoutDuration, setWorkoutDuration] = useState('')
   const [exercises, setExercises] = useState<ExerciseEntry[]>([newExercise(0)])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -109,9 +110,8 @@ export default function NewWorkoutPage() {
       // Insert workout
       const { data: workout, error: wErr } = await supabase
         .from('workouts')
-        .insert({ user_id: user.id, name: workoutName.trim(), date: workoutDate })
-        .select()
-        .single()
+        .insert({ user_id: user.id, name: workoutName.trim(), date: workoutDate, duration_minutes: workoutDuration ? parseInt(workoutDuration) : null } as never)
+        .select().single()
       if (wErr) throw wErr
 
       // Insert exercises + sets
@@ -170,9 +170,15 @@ export default function NewWorkoutPage() {
             onChange={(e) => setWorkoutName(e.target.value)}
           />
         </div>
-        <div className="input-group">
-          <label className="input-label">Date</label>
-          <input className="input" type="date" value={workoutDate} onChange={(e) => setWorkoutDate(e.target.value)} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0' }}>
+          <div className="input-group">
+            <label className="input-label">Date</label>
+            <input className="input" type="date" value={workoutDate} onChange={(e) => setWorkoutDate(e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label className="input-label"><Clock size={12} style={{ display: 'inline', marginRight: '0.25rem' }} />Durée (min)</label>
+            <input className="input" type="number" min="1" placeholder="60" value={workoutDuration} onChange={(e) => setWorkoutDuration(e.target.value)} />
+          </div>
         </div>
       </div>
 
