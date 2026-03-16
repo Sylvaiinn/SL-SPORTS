@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Calendar, Dumbbell } from 'lucide-react'
+import WorkoutActions from './WorkoutActions'
 
 interface SetRow { id: string; set_number: number; weight_kg: number | null; reps: number | null; notes: string | null }
 interface ExRow { id: string; name: string; order: number; sets: SetRow[] }
@@ -28,16 +29,22 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="fade-in">
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <Link href="/musculation" className="btn btn-ghost btn-sm" style={{ padding: '0.5rem' }}>
-          <ChevronLeft size={18} />
-        </Link>
-        <div>
-          <h1 style={{ fontSize: '1.375rem' }}>{workout.name}</h1>
-          <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <Calendar size={13} />
-            {new Date(workout.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
+      {/* Header */}
+      <div className="page-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+            <Link href="/musculation" className="btn btn-ghost btn-sm" style={{ padding: '0.5rem', flexShrink: 0 }}>
+              <ChevronLeft size={18} />
+            </Link>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: '1.375rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{workout.name}</h1>
+              <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Calendar size={13} />
+                {new Date(workout.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+          </div>
+          <WorkoutActions workoutId={workout.id} />
         </div>
       </div>
 

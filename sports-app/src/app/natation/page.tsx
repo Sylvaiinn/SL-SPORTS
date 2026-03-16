@@ -3,9 +3,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { generateSwimSession, type SwimStyle, type SwimDistance, type SwimBlock } from '@/lib/swimGenerator'
-import { Waves, Play, Save, Flame, Zap, Target, Shuffle, Loader2, ChevronDown } from 'lucide-react'
+import { Waves, Play, Save, Flame, Zap, Target, Shuffle, Loader2, ChevronDown, History } from 'lucide-react'
 
 const STYLES: { value: SwimStyle; label: string; icon: React.ComponentType<{ size?: number; color?: string }> }[] = [
   { value: 'Endurance', label: 'Endurance', icon: Flame },
@@ -60,6 +61,7 @@ function BlockCard({ block }: { block: SwimBlock }) {
 
 export default function NatationPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [selectedStyle, setSelectedStyle] = useState<SwimStyle>('Endurance')
   const [selectedDistance, setSelectedDistance] = useState<SwimDistance>(2500)
   const [plan, setPlan] = useState<ReturnType<typeof generateSwimSession> | null>(null)
@@ -100,10 +102,18 @@ export default function NatationPage() {
     <div className="fade-in">
       <div className="page-header">
         <h1>Natation</h1>
-        <p>Générateur de séances personnalisées</p>
+        <p>Générez ou consultez vos séances</p>
       </div>
 
-      {/* Style selector */}
+      {/* Tabs */}
+      <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '0.875rem', padding: '0.25rem', marginBottom: '1.5rem', border: '1px solid var(--border)', gap: '0.25rem' }}>
+        <button style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, background: 'var(--accent-teal)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}>
+          <Play size={14} fill="white" /> Générer
+        </button>
+        <button onClick={() => router.push('/natation/historique')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 500, background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', transition: 'all 0.2s' }}>
+          <History size={14} /> Historique
+        </button>
+      </div>
       <div className="card" style={{ marginBottom: '1rem' }}>
         <label className="input-label" style={{ marginBottom: '0.625rem' }}>Style de séance</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
