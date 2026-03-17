@@ -64,13 +64,16 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function handleSelect(user: UserResult) {
-    if (user.username) {
-      router.push(`/profil/${user.username}`)
-      setShowSearch(false)
-      setQuery('')
-      setResults([])
-    }
+  function handleSelect(e: React.MouseEvent | React.TouchEvent, user: UserResult) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!user.username) return
+    setShowSearch(false)
+    setQuery('')
+    setResults([])
+    // Blur any focused input to dismiss keyboard on mobile
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    router.push(`/profil/${user.username}`)
   }
 
   const searchDropdown = (results.length > 0 || loading) && (
@@ -86,7 +89,7 @@ export default function Navbar() {
         </div>
       )}
       {results.map(user => (
-        <button key={user.id} onClick={() => handleSelect(user)}
+        <button key={user.id} onClick={e => handleSelect(e, user)} onTouchEnd={e => handleSelect(e, user)}
           style={{
             display: 'flex', alignItems: 'center', gap: '0.625rem', padding: '0.5rem 0.75rem',
             width: '100%', textAlign: 'left', fontFamily: 'inherit',
@@ -165,7 +168,7 @@ export default function Navbar() {
       {/* Mobile search overlay */}
       {showSearch && (
         <div className="md:hidden" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 60,
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
           background: 'var(--bg-primary)', padding: '0.75rem',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -190,9 +193,10 @@ export default function Navbar() {
           )}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {results.map(user => (
-              <button key={user.id} onClick={() => handleSelect(user)}
+              <button key={user.id} onClick={e => handleSelect(e, user)} onTouchEnd={e => handleSelect(e, user)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0.5rem',
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  padding: '0.875rem 0.75rem', minHeight: '56px',
                   width: '100%', textAlign: 'left', fontFamily: 'inherit',
                   background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)',
                   cursor: user.username ? 'pointer' : 'default', color: 'var(--text-primary)',
