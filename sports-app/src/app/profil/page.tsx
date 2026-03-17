@@ -1,92 +1,165 @@
 export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { calculateStreak, getCurrentWeekBounds, toDateStr } from '@/lib/dashboardUtils'
 import LogoutButton from './LogoutButton'
-import { User, Mail, Calendar, Dumbbell, Waves, TrendingUp, Award } from 'lucide-react'
+import ProfileHeader from './components/ProfileHeader'
+import GlobalStats from './components/GlobalStats'
+import TrophyGrid from './components/TrophyGrid'
+import WeightChart from './components/WeightChart'
+import GoalSection from './components/GoalSection'
+import SearchUsers from './components/SearchUsers'
+import type { TrophyStats } from '@/lib/trophyEngine'
 
-interface ProfileRow { username: string | null; avatar_url?: string | null; created_at?: string }
-interface LastWorkout { date: string }
+interface ProfileRow {
+  username: string | null; avatar_url: string | null; bio: string | null
+  city: string | null; age: number | null; weight_kg: number | null; height_cm: number | null
+  main_goal: string | null; banner_color: string | null; banner_url: string | null
+  is_public: boolean; weekly_goal: number; best_streak: number; created_at: string
+}
 
 export default async function ProfilPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-  const profile = rawProfile as ProfileRow | null
+  // Fetch all data in parallel
+  const [
+    { data: rawProfile },
+    { count: totalWorkouts },
+    { count: totalSwims },
+    { count: totalRuns },
+    { data: rawRunKm },
+    { data: rawSwimM },
+    { data: rawWeightLifted },
+    { data: rawTrophies },
+    { data: rawAllWorkoutDates },
+    { data: rawAllSwimDates },
+    { data: rawAllRunDates },
+    { data: rawRunRecords },
+    { data: rawWorkoutDurations },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('workouts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('swim_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('run_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('run_sessions').select('distance_km').eq('user_id', user.id),
+    supabase.from('swim_sessions').select('distance_m').eq('user_id', user.id),
+    supabase.from('sets').select('weight_kg, exercise_id, exercises!inner(workout_id, workouts!inner(user_id))').eq('exercises.workouts.user_id', user.id),
+    supabase.from('trophies').select('trophy_key').eq('user_id', user.id),
+    supabase.from('workouts').select('date, created_at').eq('user_id', user.id),
+    supabase.from('swim_sessions').select('date, created_at').eq('user_id', user.id),
+    supabase.from('run_sessions').select('date, created_at').eq('user_id', user.id),
+    supabase.from('run_records').select('id').eq('user_id', user.id),
+    supabase.from('workouts').select('duration_minutes').eq('user_id', user.id),
+  ])
 
-  const { count: totalWorkouts } = await supabase.from('workouts').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
-  const { count: totalSwims } = await supabase.from('swim_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+  const profile = (rawProfile ?? {
+    username: null, avatar_url: null, bio: null, city: null, age: null,
+    weight_kg: null, height_cm: null, main_goal: null, banner_color: '#3b82f6',
+    banner_url: null, is_public: true, weekly_goal: 4, best_streak: 0, created_at: user.created_at,
+  }) as ProfileRow
 
-  const { data: rawLastWorkout } = await supabase.from('workouts').select('date').eq('user_id', user.id).order('date', { ascending: false }).limit(1).single()
-  const lastWorkout = rawLastWorkout as LastWorkout | null
+  const nWorkouts = totalWorkouts ?? 0
+  const nSwims = totalSwims ?? 0
+  const nRuns = totalRuns ?? 0
+  const totalSessions = nWorkouts + nSwims + nRuns
 
-  const displayName = profile?.username ?? user.email?.split('@')[0] ?? 'Athlète'
-  const memberSince = new Date(user.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  // Total run km
+  const totalRunKm = (rawRunKm ?? []).reduce((a: number, r: { distance_km: number }) => a + (r.distance_km || 0), 0)
+  // Total swim meters
+  const totalSwimM = (rawSwimM ?? []).reduce((a: number, r: { distance_m: number }) => a + (r.distance_m || 0), 0)
+  // Total weight lifted (approximate - sum of weight_kg * reps would be better but we'll use weight_kg sum)
+  const totalWeightKg = (rawWeightLifted ?? []).reduce((a: number, r: { weight_kg: number | null }) => a + (r.weight_kg ?? 0), 0)
+  // Total duration from workouts (minutes)
+  const totalDurationMin = (rawWorkoutDurations ?? []).reduce((a: number, r: { duration_minutes: number | null }) => a + (r.duration_minutes ?? 0), 0)
+
+  // Streak
+  const allDates = [
+    ...((rawAllWorkoutDates ?? []) as { date: string }[]).map(w => w.date),
+    ...((rawAllSwimDates ?? []) as { date: string }[]).map(s => s.date),
+    ...((rawAllRunDates ?? []) as { date: string }[]).map(r => r.date),
+  ]
+  const currentStreak = calculateStreak(allDates)
+  const bestStreak = Math.max(profile.best_streak, currentStreak)
+
+  // Update best streak if needed
+  if (currentStreak > profile.best_streak) {
+    await supabase.from('profiles').update({ best_streak: currentStreak } as never).eq('id', user.id)
+  }
+
+  // Current week sessions for goal
+  const { start: wStart, end: wEnd } = getCurrentWeekBounds()
+  const currentWeekSessions = allDates.filter(d => d >= toDateStr(wStart) && d <= toDateStr(wEnd)).length
+
+  // Trophy stats
+  const unlockedKeys = ((rawTrophies ?? []) as { trophy_key: string }[]).map(t => t.trophy_key)
+
+  // Check for all-sports-in-week
+  const wStartStr = toDateStr(wStart)
+  const wEndStr = toDateStr(wEnd)
+  const hasWorkoutThisWeek = ((rawAllWorkoutDates ?? []) as { date: string }[]).some(w => w.date >= wStartStr && w.date <= wEndStr)
+  const hasSwimThisWeek = ((rawAllSwimDates ?? []) as { date: string }[]).some(s => s.date >= wStartStr && s.date <= wEndStr)
+  const hasRunThisWeek = ((rawAllRunDates ?? []) as { date: string }[]).some(r => r.date >= wStartStr && r.date <= wEndStr)
+
+  // Check for early/late sessions
+  const allCreatedAts = [
+    ...((rawAllWorkoutDates ?? []) as { created_at: string }[]).map(w => w.created_at),
+    ...((rawAllSwimDates ?? []) as { created_at: string }[]).map(s => s.created_at),
+    ...((rawAllRunDates ?? []) as { created_at: string }[]).map(r => r.created_at),
+  ]
+  const hasEarly = allCreatedAts.some(c => { const h = new Date(c).getHours(); return h < 7 })
+  const hasLate = allCreatedAts.some(c => { const h = new Date(c).getHours(); return h >= 21 })
+
+  const trophyStats: TrophyStats = {
+    totalSessions,
+    totalWorkouts: nWorkouts,
+    totalSwims: nSwims,
+    totalRuns: nRuns,
+    totalRunKm,
+    totalSwimKm: totalSwimM / 1000,
+    currentStreak,
+    bestStreak,
+    hasAllSportsInWeek: hasWorkoutThisWeek && hasSwimThisWeek && hasRunThisWeek,
+    hasEarlySession: hasEarly,
+    hasLateSession: hasLate,
+    hasBrokenRecord: (rawRunRecords ?? []).length > 0,
+    sessionsThisWeek: currentWeekSessions,
+  }
 
   return (
-    <div className="fade-in">
-      <div className="page-header">
-        <h1>Profil</h1>
-        <p>Vos informations et statistiques</p>
-      </div>
+    <div className="page-enter">
+      <ProfileHeader
+        userId={user.id}
+        email={user.email || ''}
+        profile={profile}
+        totalSessions={totalSessions}
+      />
 
-      {/* Avatar + Identity */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '1rem', background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.08))' }}>
-        <div style={{
-          width: '4rem', height: '4rem', borderRadius: '1rem',
-          background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-violet))',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          fontSize: '1.5rem', fontWeight: 800, color: 'white',
-          boxShadow: '0 0 30px var(--accent-blue-glow)',
-        }}>
-          {displayName[0].toUpperCase()}
-        </div>
-        <div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{displayName}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            <Mail size={13} /> {user.email}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-            <Calendar size={13} /> Membre depuis {memberSince}
-          </div>
-        </div>
-      </div>
+      <GoalSection userId={user.id} weeklyGoal={profile.weekly_goal} currentWeekSessions={currentWeekSessions} />
 
-      {/* Stats */}
-      <h2 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Statistiques</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        {[
-          { icon: Dumbbell, label: 'Séances muscu', value: totalWorkouts ?? 0, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
-          { icon: Waves, label: 'Séances natation', value: totalSwims ?? 0, color: 'var(--accent-teal)', bg: 'var(--accent-teal-glow)' },
-          { icon: TrendingUp, label: 'Total séances', value: (totalWorkouts ?? 0) + (totalSwims ?? 0), color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)' },
-          { icon: Award, label: 'Dernière séance', value: lastWorkout ? new Date(lastWorkout.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—', color: 'var(--accent-amber)', bg: 'rgba(245,158,11,0.1)' },
-        ].map(({ icon: Icon, label, value, color, bg }) => (
-          <div key={label} className="stat-card" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.625rem' }}>
-            <div className="stat-icon" style={{ background: bg, width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem' }}>
-              <Icon size={16} color={color} />
-            </div>
-            <div>
-              <div style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <GlobalStats
+        totalWorkouts={nWorkouts}
+        totalSwims={nSwims}
+        totalRuns={nRuns}
+        totalRunKm={totalRunKm}
+        totalSwimM={totalSwimM}
+        totalWeightKg={totalWeightKg}
+        totalDuration={totalDurationMin * 60}
+        currentStreak={currentStreak}
+        bestStreak={bestStreak}
+      />
 
-      {/* Account info */}
-      <h2 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Compte</h2>
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', padding: '0.25rem 0' }}>
-          <User size={16} color="var(--text-muted)" />
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Identifiant</div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{user.id.slice(0, 8)}...</div>
-          </div>
-        </div>
-      </div>
+      <TrophyGrid stats={trophyStats} initialUnlocked={unlockedKeys} />
 
-      <LogoutButton />
+      <WeightChart userId={user.id} initialWeight={profile.weight_kg} />
+
+      <SearchUsers />
+
+      <div style={{ marginTop: '1rem' }}>
+        <LogoutButton />
+      </div>
     </div>
   )
 }

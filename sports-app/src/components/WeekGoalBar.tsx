@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, startTransition } from 'react'
 import { Settings } from 'lucide-react'
 
 interface WeekGoalBarProps {
@@ -16,8 +16,10 @@ export default function WeekGoalBar({ currentCount }: WeekGoalBarProps) {
     const stored = localStorage.getItem('weeklyGoal')
     if (stored) {
       const n = parseInt(stored)
-      setGoal(n)
-      setTempGoal(n)
+      startTransition(() => {
+        setGoal(n)
+        setTempGoal(n)
+      })
     }
   }, [])
 

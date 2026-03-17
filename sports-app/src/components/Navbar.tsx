@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Dumbbell, Waves, User } from 'lucide-react'
+import { LayoutDashboard, Dumbbell, Waves, Footprints, User } from 'lucide-react'
 
 const links = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/musculation', label: 'Muscu', icon: Dumbbell },
-  { href: '/natation', label: 'Natation', icon: Waves },
-  { href: '/profil', label: 'Profil', icon: User },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, activeColor: 'var(--accent-blue)' },
+  { href: '/musculation', label: 'Muscu', icon: Dumbbell, activeColor: 'var(--accent-blue)' },
+  { href: '/natation', label: 'Natation', icon: Waves, activeColor: 'var(--accent-teal)' },
+  { href: '/course', label: 'Course', icon: Footprints, activeColor: 'var(--accent-green)' },
+  { href: '/profil', label: 'Profil', icon: User, activeColor: 'var(--accent-blue)' },
 ]
 
 export default function Navbar() {
@@ -41,7 +42,7 @@ export default function Navbar() {
 
       {/* Mobile bottom bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t border-[var(--border)] bg-[var(--bg-secondary)]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {links.map(({ href, label, icon: Icon }) => {
+        {links.map(({ href, label, icon: Icon, activeColor }) => {
           const active = pathname.startsWith(href)
           return (
             <Link
@@ -49,7 +50,7 @@ export default function Navbar() {
               href={href}
               className="flex flex-col items-center justify-center flex-1 py-2 gap-1 transition-all"
               style={{
-                color: active ? 'var(--accent-blue)' : 'var(--text-muted)',
+                color: active ? activeColor : 'var(--text-muted)',
               }}
             >
               <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />

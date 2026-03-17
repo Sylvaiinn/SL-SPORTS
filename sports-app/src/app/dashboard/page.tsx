@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Dumbbell, Waves, TrendingUp, PlusCircle, Flame, ChevronRight, Clock } from 'lucide-react'
+import { Dumbbell, Waves, Footprints, TrendingUp, PlusCircle, Flame, ChevronRight, Clock } from 'lucide-react'
 import { calculateStreak, detectMuscles, getCurrentWeekBounds, getLastWeekBounds, toDateStr } from '@/lib/dashboardUtils'
+import { formatPace } from '@/lib/runUtils'
 import ActivityHeatmap from '@/components/ActivityHeatmap'
 import WeekGoalBar from '@/components/WeekGoalBar'
 import InactivityBanner from '@/components/InactivityBanner'
@@ -13,6 +14,7 @@ import ReprendreButton from '@/components/ReprendreButton'
 interface ExerciseRow { id: string; name: string }
 interface WorkoutRow { id: string; name: string; date: string; duration_minutes: number | null; exercises: ExerciseRow[] }
 interface SwimRow { id: string; style: string; date: string }
+interface RunRow { id: string; date: string; distance_km: number; duration_seconds: number; type: string }
 
 function Evo({ curr, prev, unit = '' }: { curr: number; prev: number; unit?: string }) {
   if (prev === 0 && curr === 0) return <span className="evo-flat">—</span>
@@ -30,42 +32,50 @@ export default async function DashboardPage() {
   const { data: rawProfile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
   const profile = rawProfile as { username: string | null } | null
 
-  // Last 30 days: all workouts + swim sessions for heatmap & streak
+  // Last 30 days
   const thirtyAgo = new Date(); thirtyAgo.setDate(thirtyAgo.getDate() - 30)
   const thirtyAgoStr = toDateStr(thirtyAgo)
 
   const [
     { data: rawAllWorkouts },
     { data: rawAllSwims },
+    { data: rawAllRuns },
     { count: totalWorkouts },
     { count: totalSwims },
+    { count: totalRuns },
   ] = await Promise.all([
     supabase.from('workouts').select('id, name, date, duration_minutes, exercises(id, name)')
       .eq('user_id', user.id).gte('date', thirtyAgoStr).order('date', { ascending: false }),
     supabase.from('swim_sessions').select('id, style, date')
       .eq('user_id', user.id).gte('date', thirtyAgoStr).order('date', { ascending: false }),
+    supabase.from('run_sessions').select('id, date, distance_km, duration_seconds, type')
+      .eq('user_id', user.id).gte('date', thirtyAgoStr).order('date', { ascending: false }),
     supabase.from('workouts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     supabase.from('swim_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('run_sessions').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
   ])
 
   const recentWorkouts = ((rawAllWorkouts ?? []) as WorkoutRow[])
   const recentSwims = ((rawAllSwims ?? []) as SwimRow[])
+  const recentRuns = ((rawAllRuns ?? []) as RunRow[])
 
-  // All active dates for heatmap (workouts + swims)
+  // All active dates for heatmap (workouts + swims + runs)
   const allActiveDates = [
     ...recentWorkouts.map(w => w.date),
     ...recentSwims.map(s => s.date),
+    ...recentRuns.map(r => r.date),
   ]
 
   // Streak
   const streak = calculateStreak(allActiveDates)
 
-  // Days since last session for inactivity banner
+  // Days since last session
   const lastSessionDate = allActiveDates.length > 0
     ? allActiveDates.slice().sort().reverse()[0]
     : null
+  const now = new Date()
   const daysSinceLast = lastSessionDate
-    ? Math.floor((Date.now() - new Date(lastSessionDate).getTime()) / 86400000)
+    ? Math.floor((now.getTime() - new Date(lastSessionDate).getTime()) / 86400000)
     : 999
 
   // Weekly stats
@@ -76,15 +86,26 @@ export default async function DashboardPage() {
   const lastWeekWorkouts = recentWorkouts.filter(w => w.date >= toDateStr(lwStart) && w.date <= toDateStr(lwEnd))
   const thisWeekSwims = recentSwims.filter(s => s.date >= toDateStr(wStart) && s.date <= toDateStr(wEnd))
   const lastWeekSwims = recentSwims.filter(s => s.date >= toDateStr(lwStart) && s.date <= toDateStr(lwEnd))
+  const thisWeekRuns = recentRuns.filter(r => r.date >= toDateStr(wStart) && r.date <= toDateStr(wEnd))
+  const lastWeekRuns = recentRuns.filter(r => r.date >= toDateStr(lwStart) && r.date <= toDateStr(lwEnd))
 
-  const thisWeekTotal = thisWeekWorkouts.length + thisWeekSwims.length
-  const lastWeekTotal = lastWeekWorkouts.length + lastWeekSwims.length
+  const thisWeekTotal = thisWeekWorkouts.length + thisWeekSwims.length + thisWeekRuns.length
+  const lastWeekTotal = lastWeekWorkouts.length + lastWeekSwims.length + lastWeekRuns.length
 
   const thisWeekDuration = thisWeekWorkouts.reduce((a, w) => a + (w.duration_minutes ?? 0), 0)
   const lastWeekDuration = lastWeekWorkouts.reduce((a, w) => a + (w.duration_minutes ?? 0), 0)
 
-  // Last 5 sessions (mix muscu + swim), sorted by date
-  const last5Workouts: ({ type: 'muscu' } & WorkoutRow)[] = recentWorkouts.slice(0, 5).map(w => ({ type: 'muscu', ...w }))
+  // Last 5 sessions (all sports merged, sorted by date)
+  type RecentSession =
+    | { type: 'muscu'; id: string; date: string; name: string; exercises: ExerciseRow[]; duration_minutes: number | null }
+    | { type: 'swim'; id: string; date: string; style: string }
+    | { type: 'run'; id: string; date: string; distance_km: number; duration_seconds: number; runType: string }
+
+  const allRecent: RecentSession[] = [
+    ...recentWorkouts.slice(0, 5).map(w => ({ type: 'muscu' as const, ...w })),
+    ...recentSwims.slice(0, 5).map(s => ({ type: 'swim' as const, ...s })),
+    ...recentRuns.slice(0, 5).map(r => ({ type: 'run' as const, id: r.id, date: r.date, distance_km: r.distance_km, duration_seconds: r.duration_seconds, runType: r.type })),
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
 
   const displayName = profile?.username ?? user.email?.split('@')[0] ?? 'Athlète'
   const hour = new Date().getHours()
@@ -107,10 +128,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Inactivity banner (client) */}
+      {/* Inactivity banner */}
       <InactivityBanner daysSinceLastSession={daysSinceLast} />
 
-      {/* Weekly goal bar (client, localStorage) */}
+      {/* Weekly goal bar */}
       <WeekGoalBar currentCount={thisWeekTotal} />
 
       {/* Weekly summary */}
@@ -120,18 +141,9 @@ export default async function DashboardPage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
           {[
-            {
-              label: 'Séances', curr: thisWeekTotal, prev: lastWeekTotal,
-              icon: <TrendingUp size={14} />, color: 'var(--accent-blue)',
-            },
-            {
-              label: 'Muscu', curr: thisWeekWorkouts.length, prev: lastWeekWorkouts.length,
-              icon: <Dumbbell size={14} />, color: 'var(--accent-blue)',
-            },
-            {
-              label: 'Durée (min)', curr: thisWeekDuration, prev: lastWeekDuration,
-              icon: <Clock size={14} />, color: 'var(--accent-violet)',
-            },
+            { label: 'Séances', curr: thisWeekTotal, prev: lastWeekTotal, icon: <TrendingUp size={14} />, color: 'var(--accent-blue)' },
+            { label: 'Muscu', curr: thisWeekWorkouts.length, prev: lastWeekWorkouts.length, icon: <Dumbbell size={14} />, color: 'var(--accent-blue)' },
+            { label: 'Durée (min)', curr: thisWeekDuration, prev: lastWeekDuration, icon: <Clock size={14} />, color: 'var(--accent-violet)' },
           ].map(({ label, curr, prev, icon, color }) => (
             <div key={label} style={{ background: 'var(--bg-card)', borderRadius: '0.75rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color, marginBottom: '0.3rem', fontSize: '0.7rem' }}>
@@ -145,19 +157,20 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats global */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.625rem', marginBottom: '1.5rem' }}>
         {[
-          { icon: Dumbbell, label: 'Muscu total', value: totalWorkouts ?? 0, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
-          { icon: Waves, label: 'Natation total', value: totalSwims ?? 0, color: 'var(--accent-teal)', bg: 'var(--accent-teal-glow)' },
-          { icon: TrendingUp, label: 'Total séances', value: (totalWorkouts ?? 0) + (totalSwims ?? 0), color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)' },
+          { icon: Dumbbell, label: 'Muscu', value: totalWorkouts ?? 0, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
+          { icon: Waves, label: 'Natation', value: totalSwims ?? 0, color: 'var(--accent-teal)', bg: 'var(--accent-teal-glow)' },
+          { icon: Footprints, label: 'Course', value: totalRuns ?? 0, color: 'var(--accent-green)', bg: 'var(--accent-green-glow)' },
+          { icon: TrendingUp, label: 'Total', value: (totalWorkouts ?? 0) + (totalSwims ?? 0) + (totalRuns ?? 0), color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)' },
         ].map(({ icon: Icon, label, value, color, bg }) => (
-          <div key={label} className="stat-card" style={{ flexDirection: 'column', padding: '0.875rem', gap: '0.5rem' }}>
-            <div className="stat-icon" style={{ background: bg, width: '2rem', height: '2rem', borderRadius: '0.5rem' }}>
-              <Icon size={14} color={color} />
+          <div key={label} className="stat-card" style={{ flexDirection: 'column', padding: '0.75rem', gap: '0.375rem' }}>
+            <div className="stat-icon" style={{ background: bg, width: '1.75rem', height: '1.75rem', borderRadius: '0.375rem' }}>
+              <Icon size={12} color={color} />
             </div>
             <div>
-              <div style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{label}</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{label}</div>
             </div>
           </div>
         ))}
@@ -172,35 +185,40 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <Link href="/musculation/new" className="card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)' }}>
-          <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <PlusCircle size={18} color="white" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.625rem', marginBottom: '1.5rem' }}>
+        <Link href="/musculation/new" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', padding: '1rem 0.5rem' }}>
+          <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Dumbbell size={16} color="white" />
           </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>Nouvelle séance</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Musculation</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>Muscu</div>
           </div>
         </Link>
-        <Link href="/natation" className="card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(59,130,246,0.08))', border: '1px solid rgba(20,184,166,0.3)' }}>
-          <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Waves size={18} color="white" />
+        <Link href="/natation" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(59,130,246,0.08))', border: '1px solid rgba(20,184,166,0.3)', padding: '1rem 0.5rem' }}>
+          <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Waves size={16} color="white" />
           </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>Générer séance</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Natation</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>Natation</div>
+          </div>
+        </Link>
+        <Link href="/course" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(59,130,246,0.08))', border: '1px solid rgba(16,185,129,0.3)', padding: '1rem 0.5rem' }}>
+          <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Footprints size={16} color="white" />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>Course</div>
           </div>
         </Link>
       </div>
 
-      {/* Recent workouts */}
+      {/* Recent sessions (all sports) */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <h2 className="section-title" style={{ marginBottom: 0 }}>Dernières séances</h2>
-          <Link href="/musculation" style={{ fontSize: '0.8125rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 500 }}>Voir tout →</Link>
         </div>
 
-        {last5Workouts.length === 0 ? (
+        {allRecent.length === 0 ? (
           <div className="empty-state">
             <Flame size={40} />
             <h3>Aucune séance</h3>
@@ -211,41 +229,96 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            {last5Workouts.map((w, index) => {
-              const exoList = Array.isArray(w.exercises) ? w.exercises : []
-              const muscles = detectMuscles(exoList.map(e => e.name))
-              return (
-                <div key={w.id} className="card" style={{ padding: '0.875rem 1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                    <Link href={`/musculation/${w.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.875rem', flex: 1, minWidth: 0 }}>
-                      <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Dumbbell size={16} color="var(--accent-blue)" />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>{w.name}</span>
-                          <span className="session-badge-muscu">Muscu</span>
+            {allRecent.map((session, index) => {
+              if (session.type === 'muscu') {
+                const w = session
+                const exoList = Array.isArray(w.exercises) ? w.exercises : []
+                const muscles = detectMuscles(exoList.map(e => e.name))
+                return (
+                  <div key={w.id} className="card" style={{ padding: '0.875rem 1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                      <Link href={`/musculation/${w.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.875rem', flex: 1, minWidth: 0 }}>
+                        <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Dumbbell size={16} color="var(--accent-blue)" />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            {new Date(w.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
-                          </span>
-                          {w.duration_minutes && (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                              <Clock size={11} /> {w.duration_minutes}min
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>{w.name}</span>
+                            <span className="session-badge-muscu">Muscu</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              {new Date(w.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
                             </span>
-                          )}
-                          {muscles && <span style={{ fontSize: '0.7rem', color: 'var(--accent-violet)', fontWeight: 500 }}>{muscles}</span>}
+                            {w.duration_minutes && (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                <Clock size={11} /> {w.duration_minutes}min
+                              </span>
+                            )}
+                            {muscles && <span style={{ fontSize: '0.7rem', color: 'var(--accent-violet)', fontWeight: 500 }}>{muscles}</span>}
+                          </div>
                         </div>
+                      </Link>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }}>
+                        {index === 0 && session.type === 'muscu' && <ReprendreButton workoutId={w.id} workoutName={w.name} />}
+                        <ChevronRight size={16} color="var(--text-muted)" />
                       </div>
-                    </Link>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }}>
-                      {index === 0 && <ReprendreButton workoutId={w.id} workoutName={w.name} />}
-                      <ChevronRight size={16} color="var(--text-muted)" />
                     </div>
                   </div>
-                </div>
-              )
+                )
+              }
+
+              if (session.type === 'swim') {
+                return (
+                  <Link key={session.id} href="/natation/historique" style={{ textDecoration: 'none' }}>
+                    <div className="card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                      <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-teal-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Waves size={16} color="var(--accent-teal)" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>Séance {session.style}</span>
+                          <span className="session-badge-swim">Natation</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          {new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <ChevronRight size={16} color="var(--text-muted)" />
+                    </div>
+                  </Link>
+                )
+              }
+
+              if (session.type === 'run') {
+                const avgPace = session.distance_km > 0 ? Math.round(session.duration_seconds / session.distance_km) : 0
+                return (
+                  <Link key={session.id} href="/course" style={{ textDecoration: 'none' }}>
+                    <div className="card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                      <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-green-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Footprints size={16} color="var(--accent-green)" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{session.distance_km.toFixed(1)} km</span>
+                          <span className="session-badge-run">Course</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            {new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                          </span>
+                          {avgPace > 0 && (
+                            <span style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 600 }}>{formatPace(avgPace)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight size={16} color="var(--text-muted)" />
+                    </div>
+                  </Link>
+                )
+              }
+
+              return null
             })}
           </div>
         )}

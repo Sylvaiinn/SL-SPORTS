@@ -37,6 +37,11 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Public profile pages (e.g., /profil/username)
+  if (/^\/profil\/[^/]+$/.test(pathname) && pathname !== '/profil') {
+    return supabaseResponse
+  }
+
   // Protected routes
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url))
