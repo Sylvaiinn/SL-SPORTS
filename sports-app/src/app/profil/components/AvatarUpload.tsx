@@ -59,8 +59,8 @@ export default function AvatarUpload({ userId, currentUrl, username, onUploaded 
   }
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      <div className="avatar-upload" onClick={() => fileRef.current?.click()}>
+    <div style={{ position: 'relative', display: 'inline-block' }} onClick={() => fileRef.current?.click()}>
+      <div className="avatar-upload">
         {displayUrl ? (
           <img src={displayUrl} alt="Avatar" />
         ) : (
@@ -80,13 +80,15 @@ export default function AvatarUpload({ userId, currentUrl, username, onUploaded 
             <Loader2 size={20} color="white" className="animate-spin" />
           </div>
         )}
-        <div style={{
-          position: 'absolute', bottom: -2, right: -2, width: '1.5rem', height: '1.5rem',
-          borderRadius: '50%', background: 'var(--accent-blue)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-primary)',
-        }}>
-          <Camera size={10} color="white" />
-        </div>
+      </div>
+      {/* Camera badge outside overflow:hidden container */}
+      <div style={{
+        position: 'absolute', bottom: -2, right: -2, width: '1.5rem', height: '1.5rem',
+        borderRadius: '50%', background: 'var(--accent-blue)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-primary)',
+        zIndex: 2, cursor: 'pointer',
+      }}>
+        <Camera size={10} color="white" />
       </div>
       <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
     </div>

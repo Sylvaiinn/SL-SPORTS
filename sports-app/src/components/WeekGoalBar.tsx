@@ -49,20 +49,7 @@ export default function WeekGoalBar({ currentCount }: WeekGoalBarProps) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {editing ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              <input
-                type="number"
-                min={1} max={14}
-                value={tempGoal}
-                onChange={e => setTempGoal(parseInt(e.target.value) || 1)}
-                className="input"
-                style={{ width: '3.5rem', padding: '0.25rem 0.5rem', textAlign: 'center' }}
-              />
-              <button onClick={saveGoal} className="btn btn-primary btn-sm" style={{ padding: '0.25rem 0.6rem' }}>OK</button>
-              <button onClick={() => setEditing(false)} className="btn btn-ghost btn-sm" style={{ padding: '0.25rem 0.6rem' }}>✕</button>
-            </div>
-          ) : (
+          {!editing && (
             <>
               <span style={{ fontWeight: 800, fontSize: '1.125rem', color: complete ? '#34d399' : 'var(--text-primary)' }}>
                 {currentCount}/{goal}
@@ -86,6 +73,48 @@ export default function WeekGoalBar({ currentCount }: WeekGoalBarProps) {
         <span style={{ fontSize: '0.7rem', color: complete ? '#34d399' : 'var(--text-muted)', fontWeight: complete ? 700 : 400 }}>{pct}%</span>
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{goal}</span>
       </div>
+
+      {editing && (
+        <div style={{ marginTop: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+            <button
+              onClick={() => setTempGoal(g => Math.max(1, g - 1))}
+              disabled={tempGoal <= 1}
+              style={{
+                width: '2.5rem', height: '2.5rem', borderRadius: '50%',
+                background: tempGoal <= 1 ? 'var(--bg-secondary)' : 'var(--accent-blue)',
+                color: tempGoal <= 1 ? 'var(--text-muted)' : 'white',
+                border: 'none', fontSize: '1.25rem', fontWeight: 800, cursor: tempGoal <= 1 ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
+                transition: 'all 0.15s',
+              }}
+            >−</button>
+            <span style={{ fontSize: '2rem', fontWeight: 800, minWidth: '2.5rem', textAlign: 'center' }}>
+              {tempGoal}
+            </span>
+            <button
+              onClick={() => setTempGoal(g => Math.min(14, g + 1))}
+              disabled={tempGoal >= 14}
+              style={{
+                width: '2.5rem', height: '2.5rem', borderRadius: '50%',
+                background: tempGoal >= 14 ? 'var(--bg-secondary)' : 'var(--accent-blue)',
+                color: tempGoal >= 14 ? 'var(--text-muted)' : 'white',
+                border: 'none', fontSize: '1.25rem', fontWeight: 800, cursor: tempGoal >= 14 ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
+                transition: 'all 0.15s',
+              }}
+            >+</button>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <button onClick={() => { setTempGoal(goal); setEditing(false) }} className="btn btn-ghost" style={{ flex: 1, padding: '0.625rem' }}>
+              Annuler
+            </button>
+            <button onClick={saveGoal} className="btn btn-primary" style={{ flex: 1, padding: '0.625rem' }}>
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
