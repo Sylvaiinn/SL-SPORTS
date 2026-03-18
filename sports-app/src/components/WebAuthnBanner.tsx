@@ -1,15 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { startRegistration } from '@simplewebauthn/browser'
-import { Fingerprint, X, Loader2 } from 'lucide-react'
+import { Fingerprint, X, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 
 const DISMISS_KEY = 'webauthn_banner_dismissed'
 
 export default function WebAuthnBanner() {
   const [visible, setVisible] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.PublicKeyCredential) return
@@ -24,32 +22,6 @@ export default function WebAuthnBanner() {
   function dismiss() {
     localStorage.setItem(DISMISS_KEY, 'true')
     setVisible(false)
-  }
-
-  async function handleActivate() {
-    setLoading(true)
-    try {
-      const optRes = await fetch('/api/webauthn/register-options', { method: 'POST' })
-      if (!optRes.ok) throw new Error()
-      const options = await optRes.json()
-      const attestation = await startRegistration({ optionsJSON: options })
-      const verRes = await fetch('/api/webauthn/register-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attestation),
-      })
-      if (!verRes.ok) throw new Error()
-      localStorage.setItem('webauthn_registered', 'true')
-      setDone(true)
-      setTimeout(() => setVisible(false), 2000)
-    } catch (e: unknown) {
-      const msg = (e as { message?: string })?.message ?? ''
-      if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
-        dismiss()
-      } else {
-        setLoading(false)
-      }
-    }
   }
 
   if (!visible) return null
@@ -71,52 +43,37 @@ export default function WebAuthnBanner() {
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        {done ? (
-          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent-green)' }}>
-            ✓ Connexion par empreinte activée !
-          </div>
-        ) : (
-          <>
-            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Active la connexion par empreinte
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-              Connecte-toi sans mot de passe avec ton empreinte digitale
-            </div>
-          </>
-        )}
+        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+          Active la connexion par empreinte
+        </div>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+          Connecte-toi sans mot de passe depuis ton profil
+        </div>
       </div>
 
-      {!done && (
-        <button
-          onClick={handleActivate}
-          disabled={loading}
-          style={{
-            padding: '0.4rem 0.875rem', borderRadius: '0.5rem', border: 'none',
-            background: 'var(--accent-blue)', color: 'white',
-            fontSize: '0.8rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
-            fontFamily: 'inherit', opacity: loading ? 0.7 : 1, flexShrink: 0,
-            display: 'flex', alignItems: 'center', gap: '0.375rem',
-          }}
-        >
-          {loading && <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />}
-          {loading ? 'Activation...' : 'Activer'}
-        </button>
-      )}
+      <Link
+        href="/profil#connexion-empreinte"
+        style={{
+          padding: '0.4rem 0.875rem', borderRadius: '0.5rem',
+          background: 'var(--accent-blue)', color: 'white',
+          fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none',
+          flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.3rem',
+        }}
+      >
+        Activer <ArrowRight size={12} />
+      </Link>
 
-      {!done && (
-        <button
-          onClick={dismiss}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--text-muted)', padding: '0.25rem', flexShrink: 0,
-            display: 'flex', alignItems: 'center',
-          }}
-          title="Ignorer"
-        >
-          <X size={15} />
-        </button>
-      )}
+      <button
+        onClick={dismiss}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--text-muted)', padding: '0.25rem', flexShrink: 0,
+          display: 'flex', alignItems: 'center',
+        }}
+        title="Ignorer"
+      >
+        <X size={15} />
+      </button>
     </div>
   )
 }
