@@ -5,20 +5,34 @@ import { startRegistration } from '@simplewebauthn/browser'
 import { Fingerprint, CheckCircle, Loader2 } from 'lucide-react'
 
 export default function WebAuthnSetup() {
-  const [supported, setSupported] = useState(false)
+  const [supported, setSupported] = useState<boolean | null>(null)
   const [registered, setRegistered] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.PublicKeyCredential) return
-    window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-      .then(ok => setSupported(ok))
-      .catch(() => {})
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) {
+      setSupported(false)
+      return
+    }
     setRegistered(localStorage.getItem('webauthn_registered') === 'true')
+    window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+      .then(ok => {
+        setSupported(ok)
+        // Scroll vers l'ancre si on arrive depuis la notification dashboard
+        if (ok && window.location.hash === '#connexion-empreinte') {
+          setTimeout(() => {
+            document.getElementById('connexion-empreinte')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }, 150)
+        }
+      })
+      .catch(() => setSupported(false))
   }, [])
 
-  if (!supported) return null
+  // Pendant la détection ou si non supporté : rendre quand même l'ancre invisible
+  if (!supported) {
+    return <div id="connexion-empreinte" style={{ height: 0, overflow: 'hidden' }} />
+  }
 
   async function handleRegister() {
     setLoading(true)
@@ -35,14 +49,17 @@ export default function WebAuthnSetup() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attestation),
       })
-      if (!verRes.ok) throw new Error(await verRes.text())
+      if (!verRes.ok) {
+        const body = await verRes.json().catch(() => ({ error: 'Erreur serveur' }))
+        throw new Error(body.error ?? 'Erreur serveur')
+      }
 
       localStorage.setItem('webauthn_registered', 'true')
       setRegistered(true)
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? String(e)
       if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
-        setError("L'activation a échoué. Réessaie.")
+        setError(msg.length < 120 ? msg : "L'activation a échoué. Vérifie la config Supabase.")
       }
     } finally {
       setLoading(false)
@@ -62,13 +79,11 @@ export default function WebAuthnSetup() {
         transition: 'all 0.3s',
       }}
     >
-      {/* Label section */}
       <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
         Sécurité
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-        {/* Icon */}
         <div style={{
           width: '2.75rem', height: '2.75rem', borderRadius: '0.75rem', flexShrink: 0,
           background: registered ? 'rgba(16,185,129,0.15)' : 'var(--accent-blue-glow)',
@@ -80,7 +95,6 @@ export default function WebAuthnSetup() {
             : <Fingerprint size={18} color="var(--accent-blue)" />}
         </div>
 
-        {/* Text */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: registered ? 'var(--accent-green)' : 'var(--text-primary)' }}>
             {registered ? '✓ Empreinte activée' : 'Connexion par empreinte'}
@@ -97,7 +111,6 @@ export default function WebAuthnSetup() {
           )}
         </div>
 
-        {/* Action */}
         {registered ? (
           <div style={{
             padding: '0.4rem 0.75rem', borderRadius: '0.5rem',
