@@ -17,15 +17,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login')
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricLoading, setBiometricLoading] = useState(false)
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.PublicKeyCredential) return
-    const registered = localStorage.getItem('webauthn_registered') === 'true'
-    if (!registered) return
-    window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-      .then(ok => setBiometricAvailable(ok))
-      .catch(() => {})
-  }, [])
+  const [biometricStep, setBiometricStep] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -36,35 +28,54 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) return
+    const registered = localStorage.getItem('webauthn_registered') === 'true'
+    if (!registered) return
+    window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+      .then(ok => setBiometricAvailable(ok))
+      .catch(() => {})
+  }, [])
+
   async function handleBiometric() {
     setBiometricLoading(true)
     setError('')
+    setBiometricStep('Étape 1/4 : challenge…')
     try {
       const optRes = await fetch('/api/webauthn/login-options', { method: 'POST' })
-      if (!optRes.ok) throw new Error((await optRes.json()).error ?? 'Erreur serveur')
+      if (!optRes.ok) {
+        const e = await optRes.json().catch(() => ({}))
+        throw new Error(`[1/4 challenge] ${e.error ?? optRes.status}`)
+      }
       const options = await optRes.json()
 
-      const assertion = await startAuthentication({ optionsJSON: options })
+      setBiometricStep('Étape 2/4 : empreinte…')
+      let assertion
+      try {
+        assertion = await startAuthentication({ optionsJSON: options })
+      } catch (webauthnErr) {
+        const msg = (webauthnErr as { message?: string })?.message ?? String(webauthnErr)
+        if (msg.includes('cancel') || msg.includes('abort') || msg.includes('NotAllowed')) return
+        throw new Error(`[2/4 WebAuthn] ${msg}`)
+      }
 
+      setBiometricStep('Étape 3/4 : vérification serveur…')
       const verRes = await fetch('/api/webauthn/login-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(assertion),
       })
       const verData = await verRes.json()
-      if (!verRes.ok) throw new Error(verData.error ?? 'Erreur serveur')
+      if (!verRes.ok) throw new Error(`[3/4 verify] ${verData.error ?? verRes.status}`)
 
-      // Redirect to Supabase magic link — it will authenticate then redirect to /auth/callback
+      setBiometricStep('Étape 4/4 : ouverture de session…')
       window.location.href = verData.action_link
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? String(e)
-      if (msg.includes('credential manager') || msg.includes('unknown error')) {
-        setError('Ton navigateur ne supporte pas cette fonctionnalité. Utilise Chrome.')
-      } else if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
-        setError(msg.length < 120 ? msg : 'Échec de la connexion biométrique')
-      }
+      setError(msg)
     } finally {
       setBiometricLoading(false)
+      setBiometricStep('')
     }
   }
 
@@ -314,7 +325,7 @@ export default function LoginPage() {
               {biometricLoading
                 ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
                 : <Fingerprint size={20} color="var(--accent-blue)" />}
-              {biometricLoading ? 'Vérification...' : 'Se connecter avec l\'empreinte'}
+              {biometricStep || (biometricLoading ? 'Vérification...' : 'Se connecter avec l\'empreinte')}
             </button>
           </>
         )}
