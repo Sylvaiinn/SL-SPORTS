@@ -9,6 +9,7 @@ import GlobalStats from './components/GlobalStats'
 import TrophyGrid from './components/TrophyGrid'
 import WeightChart from './components/WeightChart'
 import GoalSection from './components/GoalSection'
+import WebAuthnSetup from '@/components/WebAuthnSetup'
 import type { TrophyStats } from '@/lib/trophyEngine'
 
 interface ProfileRow {
@@ -153,6 +154,10 @@ export default async function ProfilPage() {
       <TrophyGrid stats={trophyStats} initialUnlocked={unlockedKeys} />
 
       <WeightChart userId={user.id} initialWeight={profile.weight_kg} />
+
+      <div style={{ marginTop: '1rem' }}>
+        <WebAuthnSetup />
+      </div>
 
       <div style={{ marginTop: '1rem' }}>
         <LogoutButton />

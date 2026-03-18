@@ -2,18 +2,30 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { startAuthentication } from '@simplewebauthn/browser'
 import {
   Dumbbell, Mail, Lock, User, AlertCircle, Loader2,
-  CheckCircle, ArrowLeft, Eye, EyeOff,
+  CheckCircle, ArrowLeft, Eye, EyeOff, Fingerprint,
 } from 'lucide-react'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login')
+  const [biometricAvailable, setBiometricAvailable] = useState(false)
+  const [biometricLoading, setBiometricLoading] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) return
+    const registered = localStorage.getItem('webauthn_registered') === 'true'
+    if (!registered) return
+    window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+      .then(ok => setBiometricAvailable(ok))
+      .catch(() => {})
+  }, [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -23,6 +35,37 @@ export default function LoginPage() {
   const [success, setSuccess] = useState<'email-sent' | 'reset-sent' | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  async function handleBiometric() {
+    setBiometricLoading(true)
+    setError('')
+    try {
+      const optRes = await fetch('/api/webauthn/login-options', { method: 'POST' })
+      if (!optRes.ok) throw new Error(await optRes.text())
+      const options = await optRes.json()
+
+      const assertion = await startAuthentication({ optionsJSON: options })
+
+      const verRes = await fetch('/api/webauthn/login-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assertion),
+      })
+      if (!verRes.ok) throw new Error((await verRes.json()).error)
+      const { access_token, refresh_token } = await verRes.json()
+
+      await supabase.auth.setSession({ access_token, refresh_token })
+      router.push('/dashboard')
+      router.refresh()
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message ?? String(e)
+      if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
+        setError('Échec de la connexion biométrique')
+      }
+    } finally {
+      setBiometricLoading(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -244,7 +287,36 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Biometric handled natively by browser via autocomplete="current-password" */}
+        {/* Fingerprint / WebAuthn login */}
+        {mode === 'login' && biometricAvailable && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>ou</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+            </div>
+            <button
+              onClick={handleBiometric}
+              disabled={biometricLoading}
+              style={{
+                width: '100%', padding: '0.875rem', borderRadius: '0.875rem',
+                border: '1px solid var(--border)', background: 'var(--bg-secondary)',
+                cursor: biometricLoading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
+                fontFamily: 'inherit', fontSize: '0.9375rem', fontWeight: 600,
+                color: 'var(--text-primary)', transition: 'border-color 0.2s',
+                opacity: biometricLoading ? 0.7 : 1,
+              }}
+              onMouseEnter={e => { if (!biometricLoading) (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.5)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)' }}
+            >
+              {biometricLoading
+                ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                : <Fingerprint size={20} color="var(--accent-blue)" />}
+              {biometricLoading ? 'Vérification...' : 'Se connecter avec l\'empreinte'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

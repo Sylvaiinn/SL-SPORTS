@@ -12,6 +12,7 @@ import InactivityBanner from '@/components/InactivityBanner'
 import ReprendreButton from '@/components/ReprendreButton'
 import CommunityTrophies from '@/components/CommunityTrophies'
 import TutorialButton from '@/components/TutorialButton'
+import WebAuthnBanner from '@/components/WebAuthnBanner'
 
 interface ExerciseRow { id: string; name: string }
 interface WorkoutRow { id: string; name: string; date: string; duration_minutes: number | null; exercises: ExerciseRow[] }
@@ -134,6 +135,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
         </div>
       </div>
+
+      {/* WebAuthn fingerprint activation banner */}
+      <WebAuthnBanner />
 
       {/* Inactivity banner */}
       <InactivityBanner daysSinceLastSession={daysSinceLast} />
@@ -332,6 +336,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div style={{ marginTop: '1.5rem' }}>
         <CommunityTrophies currentUserId={user.id} />
       </div>
+
     </div>
   )
 }
