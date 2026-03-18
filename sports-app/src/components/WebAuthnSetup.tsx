@@ -58,8 +58,10 @@ export default function WebAuthnSetup() {
       setRegistered(true)
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? String(e)
-      if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
-        setError(msg.length < 120 ? msg : "L'activation a échoué. Vérifie la config Supabase.")
+      if (msg.includes('credential manager') || msg.includes('unknown error')) {
+        setError('Active Google Password Manager dans Chrome (Paramètres → Gestionnaire de mots de passe), puis réessaie.')
+      } else if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
+        setError(msg.length < 120 ? msg : "L'activation a échoué. Réessaie.")
       }
     } finally {
       setLoading(false)

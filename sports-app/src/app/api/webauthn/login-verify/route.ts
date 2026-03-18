@@ -71,8 +71,14 @@ export async function POST(req: NextRequest) {
 
   cookieStore.delete('webauthn_auth_challenge')
 
+  // Parse the action_link to extract the raw token (needed for verifyOtp)
+  const actionLink = linkData.properties.action_link
+  const url = new URL(actionLink)
+  const token = url.searchParams.get('token') ?? linkData.properties.hashed_token
+
   return NextResponse.json({
     verified: true,
-    token_hash: linkData.properties.hashed_token,
+    token,
+    email: userData.user.email,
   })
 }

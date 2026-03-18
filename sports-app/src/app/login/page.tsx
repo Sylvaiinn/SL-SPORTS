@@ -55,7 +55,8 @@ export default function LoginPage() {
       if (!verRes.ok) throw new Error(verData.error ?? 'Erreur serveur')
 
       const { error: otpError } = await supabase.auth.verifyOtp({
-        token_hash: verData.token_hash,
+        email: verData.email,
+        token: verData.token,
         type: 'magiclink',
       })
       if (otpError) throw new Error(otpError.message)
@@ -74,7 +75,7 @@ export default function LoginPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     setLoading(true)
