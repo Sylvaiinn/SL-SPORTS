@@ -30,6 +30,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes
+  // WebAuthn API routes handle their own auth — bypass middleware redirect
+  if (pathname.startsWith('/api/webauthn/')) {
+    return supabaseResponse
+  }
+
   if (pathname === '/login' || pathname === '/auth/reset-password' || pathname === '/auth/callback') {
     if (user) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
