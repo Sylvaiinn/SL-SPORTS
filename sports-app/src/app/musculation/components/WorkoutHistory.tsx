@@ -15,7 +15,9 @@ import {
   Dumbbell,
   Clock,
   Weight,
+  Pencil,
 } from 'lucide-react'
+import Link from 'next/link'
 
 // ── Types ──────────────────────────────────────────────
 interface SetRow {
@@ -447,10 +449,10 @@ export default function WorkoutHistory() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
                   <div style={{
                     width: '2rem', height: '2rem', borderRadius: '0.5rem',
-                    background: 'var(--accent-blue-glow)', display: 'flex',
+                    background: 'var(--accent-violet-glow)', display: 'flex',
                     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}>
-                    <Dumbbell size={14} color="var(--accent-blue)" />
+                    <Dumbbell size={14} color="var(--accent-violet)" />
                   </div>
                   <span style={{
                     fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)',
@@ -557,6 +559,15 @@ export default function WorkoutHistory() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <Link
+                    href={`/musculation/${w.id}/edit`}
+                    className="btn btn-ghost btn-sm"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <Pencil size={14} />
+                    Modifier
+                  </Link>
+
                   <button
                     className="btn btn-ghost btn-sm"
                     onClick={e => { e.stopPropagation(); toggleVisibility(w) }}

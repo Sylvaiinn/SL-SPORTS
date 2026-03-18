@@ -6,11 +6,12 @@ import Link from 'next/link'
 import { Dumbbell, Waves, Footprints, TrendingUp, PlusCircle, Flame, ChevronRight, Clock } from 'lucide-react'
 import { calculateStreak, detectMuscles, getCurrentWeekBounds, getLastWeekBounds, toDateStr } from '@/lib/dashboardUtils'
 import { formatPace } from '@/lib/runUtils'
-import ActivityHeatmap from '@/components/ActivityHeatmap'
+import ActivityCalendar from '@/components/ActivityCalendar'
 import WeekGoalBar from '@/components/WeekGoalBar'
 import InactivityBanner from '@/components/InactivityBanner'
 import ReprendreButton from '@/components/ReprendreButton'
 import CommunityTrophies from '@/components/CommunityTrophies'
+import TutorialButton from '@/components/TutorialButton'
 
 interface ExerciseRow { id: string; name: string }
 interface WorkoutRow { id: string; name: string; date: string; duration_minutes: number | null; exercises: ExerciseRow[] }
@@ -24,7 +25,9 @@ function Evo({ curr, prev, unit = '' }: { curr: number; prev: number; unit?: str
   return <span className="evo-flat">→ stable</span>
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ tuto?: string }> }) {
+  const sp = await searchParams
+  const showTutorial = sp.tuto === '1'
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -121,11 +124,14 @@ export default async function DashboardPage() {
             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{greeting} 👋</p>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{displayName}</h1>
           </div>
-          {streak > 0 && (
-            <div className="streak-badge">
-              🔥 {streak}j
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            {streak > 0 && (
+              <div className="streak-badge">
+                🔥 {streak}j
+              </div>
+            )}
+            <TutorialButton autoOpen={showTutorial} />
+          </div>
         </div>
       </div>
 
@@ -143,7 +149,7 @@ export default async function DashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
           {[
             { label: 'Séances', curr: thisWeekTotal, prev: lastWeekTotal, icon: <TrendingUp size={14} />, color: 'var(--accent-blue)' },
-            { label: 'Muscu', curr: thisWeekWorkouts.length, prev: lastWeekWorkouts.length, icon: <Dumbbell size={14} />, color: 'var(--accent-blue)' },
+            { label: 'Muscu', curr: thisWeekWorkouts.length, prev: lastWeekWorkouts.length, icon: <Dumbbell size={14} />, color: 'var(--accent-violet)' },
             { label: 'Durée (min)', curr: thisWeekDuration, prev: lastWeekDuration, icon: <Clock size={14} />, color: 'var(--accent-violet)' },
           ].map(({ label, curr, prev, icon, color }) => (
             <div key={label} style={{ background: 'var(--bg-card)', borderRadius: '0.75rem', padding: '0.75rem', border: '1px solid var(--border)' }}>
@@ -158,45 +164,42 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats global */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.625rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
         {[
-          { icon: Dumbbell, label: 'Muscu', value: totalWorkouts ?? 0, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
-          { icon: Waves, label: 'Natation', value: totalSwims ?? 0, color: 'var(--accent-teal)', bg: 'var(--accent-teal-glow)' },
-          { icon: Footprints, label: 'Course', value: totalRuns ?? 0, color: 'var(--accent-green)', bg: 'var(--accent-green-glow)' },
-          { icon: TrendingUp, label: 'Total', value: (totalWorkouts ?? 0) + (totalSwims ?? 0) + (totalRuns ?? 0), color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)' },
-        ].map(({ icon: Icon, label, value, color, bg }) => (
-          <div key={label} className="stat-card" style={{ flexDirection: 'column', padding: '0.75rem', gap: '0.375rem' }}>
-            <div className="stat-icon" style={{ background: bg, width: '1.75rem', height: '1.75rem', borderRadius: '0.375rem' }}>
-              <Icon size={12} color={color} />
-            </div>
-            <div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{value}</div>
-              <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{label}</div>
-            </div>
+          { icon: Dumbbell, label: 'Muscu', value: totalWorkouts ?? 0, color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)', border: 'rgba(124,58,237,0.25)' },
+          { icon: Waves, label: 'Nata', value: totalSwims ?? 0, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)', border: 'rgba(59,130,246,0.25)' },
+          { icon: Footprints, label: 'Course', value: totalRuns ?? 0, color: 'var(--accent-green)', bg: 'var(--accent-green-glow)', border: 'rgba(16,185,129,0.25)' },
+          { icon: TrendingUp, label: 'Total', value: (totalWorkouts ?? 0) + (totalSwims ?? 0) + (totalRuns ?? 0), color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.25)' },
+        ].map(({ icon: Icon, label, value, color, bg, border }) => (
+          <div key={label} style={{
+            background: bg, border: `1px solid ${border}`,
+            borderRadius: '0.875rem', padding: '0.625rem 0.5rem',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem',
+          }}>
+            <Icon size={14} color={color} />
+            <div style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+            <div style={{ fontSize: '0.6rem', color, fontWeight: 600, letterSpacing: '0.02em' }}>{label}</div>
           </div>
         ))}
       </div>
 
-      {/* Activity heatmap */}
+      {/* Activity calendar */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.875rem' }}>
-          Activité — 30 derniers jours
-        </div>
-        <ActivityHeatmap activeDates={allActiveDates} />
+        <ActivityCalendar />
       </div>
 
       {/* Quick actions */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.625rem', marginBottom: '1.5rem' }}>
-        <Link href="/musculation" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', padding: '1rem 0.5rem' }}>
-          <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Link href="/musculation" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.08))', border: '1px solid rgba(124,58,237,0.3)', padding: '1rem 0.5rem' }}>
+          <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-violet)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Dumbbell size={16} color="white" />
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>Muscu</div>
           </div>
         </Link>
-        <Link href="/natation" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(59,130,246,0.08))', border: '1px solid rgba(20,184,166,0.3)', padding: '1rem 0.5rem' }}>
-          <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Link href="/natation" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', padding: '1rem 0.5rem' }}>
+          <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Waves size={16} color="white" />
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -239,8 +242,8 @@ export default async function DashboardPage() {
                   <div key={w.id} className="card" style={{ padding: '0.875rem 1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
                       <Link href={`/musculation/${w.id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.875rem', flex: 1, minWidth: 0 }}>
-                        <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Dumbbell size={16} color="var(--accent-blue)" />
+                        <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-violet-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Dumbbell size={16} color="var(--accent-violet)" />
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -273,8 +276,8 @@ export default async function DashboardPage() {
                 return (
                   <Link key={session.id} href="/natation/historique" style={{ textDecoration: 'none' }}>
                     <div className="card" style={{ padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                      <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-teal-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Waves size={16} color="var(--accent-teal)" />
+                      <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Waves size={16} color="var(--accent-blue)" />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>

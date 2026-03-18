@@ -269,7 +269,7 @@ export default function RunForm({ onSaved }: RunFormProps) {
       <div className="card" style={{ marginBottom: '0.75rem' }}>
         <SectionHeader id="cardio" title="Cardio" subtitle="BPM (optionnel)" />
         {openSections.cardio && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+          <div className="grid-2-3" style={{ gap: '0.75rem' }}>
             <div className="input-group">
               <label className="input-label">BPM moy.</label>
               <input className="input" type="number" placeholder="145" value={avgBpm} onChange={e => setAvgBpm(e.target.value)} />
@@ -404,7 +404,7 @@ export default function RunForm({ onSaved }: RunFormProps) {
           </button>
         </div>
         {isCompetition && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+          <div className="grid-2-3" style={{ gap: '0.75rem', marginTop: '0.5rem' }}>
             <div className="input-group">
               <label className="input-label">Résultat</label>
               <input className="input" type="text" placeholder="1:45:30" value={compResult} onChange={e => setCompResult(e.target.value)} />

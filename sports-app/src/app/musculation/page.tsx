@@ -37,8 +37,8 @@ export default function MuscuPage() {
     <div className="fade-in">
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Dumbbell size={18} color="var(--accent-blue)" />
+          <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-violet-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Dumbbell size={18} color="var(--accent-violet)" />
           </div>
           <div>
             <h1>Musculation</h1>
@@ -54,7 +54,7 @@ export default function MuscuPage() {
             key={id}
             className={`tab-bar-item ${tab === id ? 'active' : ''}`}
             onClick={() => setTab(id)}
-            style={tab === id ? { background: 'var(--accent-blue)', color: 'white' } : {}}
+            style={tab === id ? { background: 'var(--accent-violet)', color: 'white' } : {}}
           >
             <Icon size={14} />
             <span style={{ fontSize: '0.8125rem' }}>{label}</span>

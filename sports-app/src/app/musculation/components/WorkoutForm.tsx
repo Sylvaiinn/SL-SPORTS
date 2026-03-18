@@ -561,9 +561,9 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
                 <div style={{
                   width: '1.75rem', height: '1.75rem', borderRadius: '0.5rem',
-                  background: 'var(--accent-blue-glow)', display: 'flex',
+                  background: 'var(--accent-violet-glow)', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)',
+                  fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-violet)',
                 }}>
                   {exIdx + 1}
                 </div>
@@ -596,9 +596,9 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
                         borderRadius: '999px',
                         fontSize: '0.7rem',
                         fontWeight: 600,
-                        border: `1px solid ${active ? 'rgba(59,130,246,0.4)' : 'var(--border)'}`,
-                        background: active ? 'var(--accent-blue-glow)' : 'transparent',
-                        color: active ? '#60a5fa' : 'var(--text-muted)',
+                        border: `1px solid ${active ? 'rgba(124,58,237,0.4)' : 'var(--border)'}`,
+                        background: active ? 'var(--accent-violet-glow)' : 'transparent',
+                        color: active ? '#a78bfa' : 'var(--text-muted)',
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                         fontFamily: 'inherit',
@@ -813,10 +813,10 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                 <div style={{
                   width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem',
-                  background: 'var(--accent-blue-glow)', display: 'flex',
+                  background: 'var(--accent-violet-glow)', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Dumbbell size={18} color="var(--accent-blue)" />
+                  <Dumbbell size={18} color="var(--accent-violet)" />
                 </div>
                 <div>
                   <h3 style={{ fontWeight: 800, fontSize: '1.125rem', color: 'var(--text-primary)' }}>
@@ -858,7 +858,7 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
                 <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                   Volume total
                 </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-blue)' }}>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-violet)' }}>
                   {Math.round(totalVolume).toLocaleString('fr-FR')} kg
                 </div>
               </div>

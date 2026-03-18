@@ -53,8 +53,8 @@ export default function GlobalStats({
           Répartition des séances
         </div>
         <DonutChart segments={[
-          { label: 'Musculation', value: totalWorkouts, color: 'var(--accent-blue)' },
-          { label: 'Natation', value: totalSwims, color: 'var(--accent-teal)' },
+          { label: 'Musculation', value: totalWorkouts, color: 'var(--accent-violet)' },
+          { label: 'Natation', value: totalSwims, color: 'var(--accent-blue)' },
           { label: 'Course', value: totalRuns, color: 'var(--accent-green)' },
         ]} />
       </div>
@@ -65,8 +65,8 @@ export default function GlobalStats({
           { icon: TrendingUp, label: 'Séances totales', value: `${totalSessions}`, color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)' },
           { icon: Clock, label: 'Temps total', value: `${Math.round(totalDuration / 60)}h`, color: 'var(--accent-amber)', bg: 'rgba(245,158,11,0.15)' },
           { icon: Footprints, label: 'Km courus', value: `${totalRunKm.toFixed(1)}`, color: 'var(--accent-green)', bg: 'var(--accent-green-glow)' },
-          { icon: Waves, label: 'Km nagés', value: `${totalSwimKm.toFixed(1)}`, color: 'var(--accent-teal)', bg: 'var(--accent-teal-glow)' },
-          { icon: Dumbbell, label: 'Poids soulevé', value: totalWeightKg > 1000 ? `${(totalWeightKg / 1000).toFixed(1)}t` : `${Math.round(totalWeightKg)}kg`, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
+          { icon: Waves, label: 'Km nagés', value: `${totalSwimKm.toFixed(1)}`, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
+          { icon: Dumbbell, label: 'Poids soulevé', value: totalWeightKg > 1000 ? `${(totalWeightKg / 1000).toFixed(1)}t` : `${Math.round(totalWeightKg)}kg`, color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)' },
         ].map(({ icon: Icon, label, value, color, bg }) => (
           <div key={label} className="stat-card" style={{ flexDirection: 'column', padding: '0.875rem', gap: '0.5rem' }}>
             <div className="stat-icon" style={{ background: bg, width: '2rem', height: '2rem', borderRadius: '0.5rem' }}>

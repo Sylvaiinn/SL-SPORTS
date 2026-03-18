@@ -282,8 +282,8 @@ function ProgressionChart({
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ overflow: 'visible' }}>
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--accent-blue)" stopOpacity={0.25} />
-          <stop offset="100%" stopColor="var(--accent-blue)" stopOpacity={0.02} />
+          <stop offset="0%" stopColor="var(--accent-violet)" stopOpacity={0.25} />
+          <stop offset="100%" stopColor="var(--accent-violet)" stopOpacity={0.02} />
         </linearGradient>
       </defs>
 
@@ -324,7 +324,7 @@ function ProgressionChart({
       <polyline
         points={polyline}
         fill="none"
-        stroke="var(--accent-blue)"
+        stroke="var(--accent-violet)"
         strokeWidth={2.5}
         strokeLinejoin="round"
         strokeLinecap="round"
@@ -337,7 +337,7 @@ function ProgressionChart({
           cx={p.x}
           cy={p.y}
           r={4}
-          fill="var(--accent-blue)"
+          fill="var(--accent-violet)"
           stroke="var(--bg-card)"
           strokeWidth={2}
         />
@@ -504,7 +504,7 @@ export default function WorkoutStats() {
             onClick={() => setPeriod(opt.value)}
             style={
               period === opt.value
-                ? { background: 'var(--accent-blue)', color: 'white', flexShrink: 0 }
+                ? { background: 'var(--accent-violet)', color: 'white', flexShrink: 0 }
                 : { flexShrink: 0 }
             }
           >

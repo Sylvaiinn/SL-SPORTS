@@ -391,8 +391,8 @@ export default function TemplateManager({ onUseTemplate }: Props) {
                   onClick={() => setFormIcon(icon)}
                   style={{
                     width: '2.5rem', height: '2.5rem', borderRadius: '0.625rem',
-                    background: formIcon === icon ? 'var(--accent-blue-glow)' : 'var(--bg-secondary)',
-                    border: formIcon === icon ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
+                    background: formIcon === icon ? 'var(--accent-violet-glow)' : 'var(--bg-secondary)',
+                    border: formIcon === icon ? '2px solid var(--accent-violet)' : '1px solid var(--border)',
                     cursor: 'pointer', transition: 'all 0.15s',
                     fontSize: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     justifySelf: 'center',
@@ -577,7 +577,7 @@ export default function TemplateManager({ onUseTemplate }: Props) {
           marginBottom: '1rem',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Dumbbell size={18} color="var(--accent-blue)" />
+            <Dumbbell size={18} color="var(--accent-violet)" />
             <h2 style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--text-primary)' }}>
               Mes templates
             </h2>

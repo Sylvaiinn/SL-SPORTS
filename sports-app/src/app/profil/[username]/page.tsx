@@ -14,7 +14,6 @@ interface ProfileRow {
 
 interface PublicWorkout {
   id: string; name: string; date: string; duration_minutes: number | null
-  volume_total_kg: number | null
   exercises: { name: string }[]
 }
 
@@ -87,7 +86,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     supabase.from('swim_sessions').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
     supabase.from('run_sessions').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
     supabase.from('trophies').select('trophy_key').eq('user_id', profile.id),
-    supabase.from('workouts').select('id, name, date, duration_minutes, volume_total_kg, exercises(name)')
+    supabase.from('workouts').select('id, name, date, duration_minutes, exercises(name)')
       .eq('user_id', profile.id).eq('is_public', true).order('date', { ascending: false }).limit(10),
   ])
 
@@ -149,8 +148,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
         {[
-          { icon: Dumbbell, label: 'Muscu', value: nWorkouts, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
-          { icon: Waves, label: 'Natation', value: nSwims, color: 'var(--accent-teal)', bg: 'var(--accent-teal-glow)' },
+          { icon: Dumbbell, label: 'Muscu', value: nWorkouts, color: 'var(--accent-violet)', bg: 'var(--accent-violet-glow)' },
+          { icon: Waves, label: 'Natation', value: nSwims, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
           { icon: Footprints, label: 'Course', value: nRuns, color: 'var(--accent-green)', bg: 'var(--accent-green-glow)' },
         ].map(({ icon: Icon, label, value, color, bg }) => (
           <div key={label} className="stat-card" style={{ flexDirection: 'column', padding: '0.875rem', gap: '0.5rem' }}>
@@ -213,9 +212,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                     </span>
                     {w.duration_minutes && (
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{w.duration_minutes} min</span>
-                    )}
-                    {w.volume_total_kg && w.volume_total_kg > 0 && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600 }}>{Math.round(w.volume_total_kg)} kg</span>
                     )}
                   </div>
                   {exoNames.length > 0 && (

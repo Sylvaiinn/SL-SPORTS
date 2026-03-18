@@ -257,7 +257,7 @@ export default function SwimHistoryPage() {
         <button onClick={() => router.push('/natation')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 500, background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', transition: 'all 0.2s' }}>
           <Play size={14} /> Générer
         </button>
-        <button style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, background: 'var(--accent-teal)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}>
+        <button style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, background: 'var(--accent-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}>
           <History size={14} /> Historique
         </button>
       </div>
@@ -277,7 +277,7 @@ export default function SwimHistoryPage() {
           {/* Global stats */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
             {[
-              { label: 'Distance totale', value: totalDistance >= 1000 ? `${(totalDistance / 1000).toFixed(1)} km` : `${totalDistance} m`, icon: Waves, color: 'var(--accent-teal)', bg: 'var(--accent-teal-glow)' },
+              { label: 'Distance totale', value: totalDistance >= 1000 ? `${(totalDistance / 1000).toFixed(1)} km` : `${totalDistance} m`, icon: Waves, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
               { label: 'Séances total', value: String(totalSessions), icon: TrendingUp, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className="stat-card" style={{ flexDirection: 'column', gap: '0.5rem' }}>

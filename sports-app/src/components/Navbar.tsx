@@ -8,8 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 
 const links = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, activeColor: 'var(--accent-blue)' },
-  { href: '/musculation', label: 'Muscu', icon: Dumbbell, activeColor: 'var(--accent-blue)' },
-  { href: '/natation', label: 'Natation', icon: Waves, activeColor: 'var(--accent-teal)' },
+  { href: '/musculation', label: 'Muscu', icon: Dumbbell, activeColor: 'var(--accent-violet)' },
+  { href: '/natation', label: 'Natation', icon: Waves, activeColor: 'var(--accent-blue)' },
   { href: '/course', label: 'Course', icon: Footprints, activeColor: 'var(--accent-green)' },
   { href: '/profil', label: 'Profil', icon: User, activeColor: 'var(--accent-blue)' },
 ]

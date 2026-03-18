@@ -138,7 +138,7 @@ export default function NatationPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '0.875rem', padding: '0.25rem', marginBottom: '1.5rem', border: '1px solid var(--border)', gap: '0.25rem' }}>
-        <button style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'default', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, background: 'var(--accent-teal)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}>
+        <button style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'default', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, background: 'var(--accent-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}>
           <Play size={14} fill="white" /> Générer
         </button>
         <button onClick={() => router.push('/natation/historique')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 500, background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', transition: 'all 0.2s' }}>
@@ -186,7 +186,7 @@ export default function NatationPage() {
           {PRESET_DISTANCES.map(d => {
             const selected = !useCustom && selectedDistance === d
             return (
-              <button key={d} onClick={() => { setSelectedDistance(d); setUseCustom(false) }} style={{ padding: '0.75rem 0.25rem', borderRadius: '0.75rem', border: `1px solid ${selected ? 'var(--accent-teal)' : 'var(--border)'}`, background: selected ? 'var(--accent-teal-glow)' : 'var(--bg-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit', fontWeight: 700, color: selected ? 'var(--accent-teal)' : 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <button key={d} onClick={() => { setSelectedDistance(d); setUseCustom(false) }} style={{ padding: '0.75rem 0.25rem', borderRadius: '0.75rem', border: `1px solid ${selected ? 'var(--accent-blue)' : 'var(--border)'}`, background: selected ? 'var(--accent-blue-glow)' : 'var(--bg-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit', fontWeight: 700, color: selected ? 'var(--accent-blue)' : 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 {(d / 1000).toFixed(1)}km
               </button>
             )
@@ -200,10 +200,10 @@ export default function NatationPage() {
             onChange={e => { setCustomDistance(e.target.value); setUseCustom(true) }}
             onFocus={() => setUseCustom(true)}
             className="input"
-            style={{ flex: 1, borderColor: useCustom ? 'var(--accent-teal)' : undefined }}
+            style={{ flex: 1, borderColor: useCustom ? 'var(--accent-blue)' : undefined }}
           />
           {useCustom && customDistance && (
-            <span style={{ fontSize: '0.875rem', color: 'var(--accent-teal)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--accent-blue)', fontWeight: 700, whiteSpace: 'nowrap' }}>
               {parseInt(customDistance) >= 1000 ? `${(parseInt(customDistance) / 1000).toFixed(2)}km` : `${customDistance}m`}
             </span>
           )}
@@ -247,7 +247,7 @@ export default function NatationPage() {
       </div>
 
       {/* Generate */}
-      <button onClick={generate} className="btn btn-teal btn-lg btn-full" style={{ marginBottom: '2rem' }}>
+      <button onClick={generate} className="btn btn-primary btn-lg btn-full" style={{ marginBottom: '2rem' }}>
         <Play size={18} fill="white" /> Générer la séance
       </button>
 
@@ -260,7 +260,7 @@ export default function NatationPage() {
               <h2 style={{ fontWeight: 800, fontSize: '1.125rem', color: 'var(--text-primary)' }}>Séance {plan.style}</h2>
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.375rem', flexWrap: 'wrap' }}>
                 <span className={`badge ${styleColors.badge}`}>{plan.style}</span>
-                <span className="badge badge-teal">{plan.totalDistance}m</span>
+                <span className="badge badge-blue">{plan.totalDistance}m</span>
                 <span className="badge badge-gray">{plan.level}</span>
                 <span className="badge badge-gray">{allBlocks.length} blocs</span>
                 {plan.equipment.length > 0 && <span className="badge badge-violet">{plan.equipment.join(' · ')}</span>}

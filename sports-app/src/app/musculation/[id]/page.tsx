@@ -77,7 +77,7 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
           return (
             <div key={ex.id} className="exercise-card" style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.875rem' }}>
-                <div style={{ width: '1.75rem', height: '1.75rem', borderRadius: '0.5rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)' }}>
+                <div style={{ width: '1.75rem', height: '1.75rem', borderRadius: '0.5rem', background: 'var(--accent-violet-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-violet)' }}>
                   {ex.order + 1}
                 </div>
                 <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{ex.name}</span>

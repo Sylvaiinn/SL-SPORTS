@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes
-  if (pathname === '/login') {
+  if (pathname === '/login' || pathname === '/auth/reset-password') {
     if (user) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
