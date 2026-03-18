@@ -42,7 +42,11 @@ export default function LoginPage() {
     setError('')
     setBiometricStep('Étape 1/4 : challenge…')
     try {
-      const optRes = await fetch('/api/webauthn/login-options', { method: 'POST' })
+      const optRes = await fetch('/api/webauthn/login-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
       if (!optRes.ok) {
         const e = await optRes.json().catch(() => ({}))
         throw new Error(`[1/4 challenge] ${e.error ?? optRes.status}`)

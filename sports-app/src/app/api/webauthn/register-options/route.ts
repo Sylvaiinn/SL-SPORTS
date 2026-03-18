@@ -24,7 +24,7 @@ export async function POST() {
     authenticatorSelection: {
       authenticatorAttachment: 'platform',
       userVerification: 'required',
-      residentKey: 'preferred',
+      residentKey: 'discouraged', // Avoids Android credential manager
     },
     excludeCredentials: (existing ?? []).map(c => ({ id: c.credential_id })),
   })

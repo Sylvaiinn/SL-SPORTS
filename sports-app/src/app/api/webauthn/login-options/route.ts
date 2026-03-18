@@ -1,20 +1,44 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { generateAuthenticationOptions } from '@simplewebauthn/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { cookies } from 'next/headers'
 
 const RP_ID = process.env.NEXT_PUBLIC_APP_DOMAIN ?? 'localhost'
 
-export async function POST() {
-  // Use discoverable credentials (allowCredentials empty) so the user
-  // just taps the fingerprint sensor without typing their email first.
+export async function POST(req: NextRequest) {
+  const cookieStore = await cookies()
+  const service = createServiceClient()
+
+  // Try to get email from body to find specific credentials (needed on Android)
+  let allowCredentials: { id: string }[] = []
+  try {
+    const body = await req.json().catch(() => ({}))
+    const email = body.email as string | undefined
+
+    if (email) {
+      // Find user by email via admin API
+      const { data: { users } } = await service.auth.admin.listUsers({ perPage: 1000 })
+      const user = users.find(u => u.email === email)
+
+      if (user) {
+        const { data: creds } = await service
+          .from('webauthn_credentials')
+          .select('credential_id')
+          .eq('user_id', user.id)
+
+        if (creds && creds.length > 0) {
+          allowCredentials = creds.map(c => ({ id: c.credential_id }))
+        }
+      }
+    }
+  } catch { /* ignore — fall back to discoverable */ }
+
   const options = await generateAuthenticationOptions({
     rpID: RP_ID,
     userVerification: 'required',
-    allowCredentials: [],
+    allowCredentials, // empty = discoverable (iOS), filled = non-discoverable (Android)
   })
 
-  const cookieStore = await cookies()
   cookieStore.set('webauthn_auth_challenge', options.challenge, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -22,9 +46,6 @@ export async function POST() {
     maxAge: 300,
     path: '/',
   })
-
-  // Suppress unused-variable warning
-  void createServiceClient
 
   return NextResponse.json(options)
 }
