@@ -6,8 +6,6 @@ import { MUSCLE_GROUPS, MUSCLE_COLORS, calculateVolume, detectMuscleGroups } fro
 import RadarChart from './RadarChart'
 import MuscleMap from './MuscleMap'
 import {
-  TrendingUp,
-  TrendingDown,
   Trophy,
   Star,
   ChevronDown,
@@ -405,33 +403,20 @@ export default function WorkoutStats() {
   }, [fetchData])
 
   // ── Derived data ─────────────────────────────────────
-  const { start, end, prevStart, prevEnd } = useMemo(() => getPeriodDates(period), [period])
+  const { start, end } = useMemo(() => getPeriodDates(period), [period])
 
   const currentWorkouts = useMemo(
     () => (period === 'all' ? workouts : filterByDateRange(workouts, start, end)),
     [workouts, period, start, end]
   )
 
-  const previousWorkouts = useMemo(
-    () => (period === 'all' ? [] : filterByDateRange(workouts, prevStart, prevEnd)),
-    [workouts, period, prevStart, prevEnd]
-  )
-
-  const currentVolume = useMemo(() => totalVolume(currentWorkouts), [currentWorkouts])
-  const previousVolume = useMemo(() => totalVolume(previousWorkouts), [previousWorkouts])
-
-  const volumeChange = useMemo(() => {
-    if (period === 'all' || previousVolume === 0) return null
-    return ((currentVolume - previousVolume) / previousVolume) * 100
-  }, [currentVolume, previousVolume, period])
-
   const exerciseNames = useMemo(() => getAllExerciseNames(workouts), [workouts])
 
+  // Always use all-time data for progression chart (historique complet = plus pertinent)
   const progressionEntries = useMemo(() => {
     if (!selectedExercise) return []
-    const source = period === 'all' ? workouts : currentWorkouts
-    return getMaxWeightOverTime(source, selectedExercise)
-  }, [selectedExercise, currentWorkouts, workouts, period])
+    return getMaxWeightOverTime(workouts, selectedExercise)
+  }, [selectedExercise, workouts])
 
   // Week vs previous week
   const thisWeek = useMemo(() => {
@@ -526,55 +511,6 @@ export default function WorkoutStats() {
             {opt.label}
           </button>
         ))}
-      </div>
-
-      {/* Volume total card */}
-      <div className="card">
-        <div
-          style={{
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            marginBottom: '0.5rem',
-          }}
-        >
-          Volume total
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
-          <span
-            style={{
-              fontSize: '2rem',
-              fontWeight: 800,
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {currentVolume.toLocaleString('fr-FR')}
-          </span>
-          <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>kg</span>
-          {volumeChange !== null && (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.8125rem',
-                fontWeight: 700,
-                color: volumeChange >= 0 ? 'var(--accent-green)' : '#ef4444',
-              }}
-            >
-              {volumeChange >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-              {volumeChange >= 0 ? '+' : ''}
-              {volumeChange.toFixed(1)}%
-            </span>
-          )}
-        </div>
-        {period !== 'all' && previousVolume > 0 && (
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Période précédente : {previousVolume.toLocaleString('fr-FR')} kg
-          </div>
-        )}
       </div>
 
       {/* Progression par exercice */}

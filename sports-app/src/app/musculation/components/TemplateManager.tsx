@@ -104,13 +104,35 @@ export default function TemplateManager({ onUseTemplate }: Props) {
 
   const fetchPublicTemplates = useCallback(async (uid: string) => {
     setLoadingPublic(true)
-    const { data } = await supabase
+    const { data: templates } = await supabase
       .from('workout_templates')
-      .select('*, profiles(username)')
+      .select('*')
       .eq('is_public', true)
-      .neq('user_id', uid)
       .order('use_count', { ascending: false })
-    setPublicTemplates((data as WorkoutTemplate[]) ?? [])
+
+    if (!templates || templates.length === 0) {
+      setPublicTemplates([])
+      setLoadingPublic(false)
+      return
+    }
+
+    // Fetch usernames separately (no direct FK to profiles)
+    const userIds = [...new Set(templates.map((t: WorkoutTemplate) => t.user_id))]
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', userIds)
+
+    const usernameMap: Record<string, string> = {}
+    for (const p of (profilesData ?? []) as { id: string; username: string | null }[]) {
+      if (p.username) usernameMap[p.id] = p.username
+    }
+
+    const enriched = templates.map((t: WorkoutTemplate) => ({
+      ...t,
+      profiles: { username: usernameMap[t.user_id] ?? null },
+    }))
+    setPublicTemplates(enriched as WorkoutTemplate[])
     setLoadingPublic(false)
   }, [])
 
@@ -799,6 +821,7 @@ export default function TemplateManager({ onUseTemplate }: Props) {
             {filteredPublic.map(tpl => {
               const exerciseCount = Array.isArray(tpl.exercises_json) ? tpl.exercises_json.length : 0
               const username = tpl.profiles?.username || 'Anonyme'
+              const isMine = tpl.user_id === userId
               const isCopying = copyingId === tpl.id
 
               return (
@@ -807,7 +830,7 @@ export default function TemplateManager({ onUseTemplate }: Props) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.75rem',
                     padding: '0.875rem', borderRadius: '0.75rem',
-                    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                    background: 'var(--bg-secondary)', border: `1px solid ${isMine ? 'rgba(139,92,246,0.3)' : 'var(--border)'}`,
                     transition: 'all 0.2s',
                   }}
                 >
@@ -824,11 +847,18 @@ export default function TemplateManager({ onUseTemplate }: Props) {
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {tpl.name}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {tpl.name}
+                      </span>
+                      {isMine && (
+                        <span className="badge" style={{ fontSize: '0.6rem', background: 'var(--accent-violet-glow)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.3)' }}>
+                          Le vôtre
+                        </span>
+                      )}
                     </div>
                     <div style={{
                       fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.125rem',
@@ -842,26 +872,28 @@ export default function TemplateManager({ onUseTemplate }: Props) {
                     </div>
                   </div>
 
-                  {/* Use button */}
-                  <button
-                    onClick={() => handleCopyPublic(tpl)}
-                    disabled={isCopying}
-                    className="btn btn-ghost btn-sm"
-                    style={{
-                      flexShrink: 0, minHeight: '2.25rem',
-                      borderColor: 'rgba(139,92,246,0.3)',
-                      color: '#a78bfa',
-                    }}
-                  >
-                    {isCopying ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <>
-                        <Plus size={14} />
-                        <span style={{ fontSize: '0.75rem' }}>Utiliser</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Use button — hidden for own templates */}
+                  {!isMine && (
+                    <button
+                      onClick={() => handleCopyPublic(tpl)}
+                      disabled={isCopying}
+                      className="btn btn-ghost btn-sm"
+                      style={{
+                        flexShrink: 0, minHeight: '2.25rem',
+                        borderColor: 'rgba(139,92,246,0.3)',
+                        color: '#a78bfa',
+                      }}
+                    >
+                      {isCopying ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <>
+                          <Plus size={14} />
+                          <span style={{ fontSize: '0.75rem' }}>Utiliser</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               )
             })}

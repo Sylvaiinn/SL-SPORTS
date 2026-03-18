@@ -4,12 +4,18 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { calculateLevel } from '@/lib/trophyEngine'
 import { TROPHY_DEFINITIONS } from '@/lib/trophyEngine'
-import { MapPin, Lock, Dumbbell, Waves, Footprints, Trophy } from 'lucide-react'
+import { MapPin, Lock, Dumbbell, Waves, Footprints, Trophy, Calendar, Eye } from 'lucide-react'
 
 interface ProfileRow {
   id: string; username: string | null; avatar_url: string | null; bio: string | null
   city: string | null; main_goal: string | null; banner_color: string | null
   banner_url: string | null; is_public: boolean; created_at: string
+}
+
+interface PublicWorkout {
+  id: string; name: string; date: string; duration_minutes: number | null
+  volume_total_kg: number | null
+  exercises: { name: string }[]
 }
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ username: string }> }) {
@@ -75,11 +81,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     { count: totalSwims },
     { count: totalRuns },
     { data: rawTrophies },
+    { data: rawPublicWorkouts },
   ] = await Promise.all([
     supabase.from('workouts').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
     supabase.from('swim_sessions').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
     supabase.from('run_sessions').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
     supabase.from('trophies').select('trophy_key').eq('user_id', profile.id),
+    supabase.from('workouts').select('id, name, date, duration_minutes, volume_total_kg, exercises(name)')
+      .eq('user_id', profile.id).eq('is_public', true).order('date', { ascending: false }).limit(10),
   ])
 
   const nWorkouts = totalWorkouts ?? 0
@@ -88,6 +97,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const totalSessions = nWorkouts + nSwims + nRuns
   const userLevel = calculateLevel(totalSessions)
   const unlockedKeys = ((rawTrophies ?? []) as { trophy_key: string }[]).map(t => t.trophy_key)
+  const publicWorkouts = (rawPublicWorkouts ?? []) as PublicWorkout[]
 
   return (
     <div className="page-enter">
@@ -172,6 +182,55 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>{trophy.name}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Public workouts */}
+      {publicWorkouts.length > 0 && (
+        <div className="card">
+          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <Dumbbell size={14} color="var(--accent-blue)" /> Séances publiques
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+            {publicWorkouts.map(w => {
+              const exoNames = Array.isArray(w.exercises) ? w.exercises.map((e: { name: string }) => e.name) : []
+              return (
+                <div key={w.id} style={{
+                  padding: '0.75rem', borderRadius: '0.75rem',
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{w.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                      <Eye size={11} /> Public
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Calendar size={11} />
+                      {new Date(w.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                    {w.duration_minutes && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{w.duration_minutes} min</span>
+                    )}
+                    {w.volume_total_kg && w.volume_total_kg > 0 && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600 }}>{Math.round(w.volume_total_kg)} kg</span>
+                    )}
+                  </div>
+                  {exoNames.length > 0 && (
+                    <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                      {exoNames.slice(0, 4).map((name: string) => (
+                        <span key={name} className="badge badge-blue" style={{ fontSize: '0.65rem', padding: '0.125rem 0.4rem' }}>{name}</span>
+                      ))}
+                      {exoNames.length > 4 && (
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{exoNames.length - 4}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
