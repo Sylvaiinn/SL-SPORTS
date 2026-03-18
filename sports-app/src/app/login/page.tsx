@@ -2,17 +2,15 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
   Dumbbell, Mail, Lock, User, AlertCircle, Loader2,
-  CheckCircle, ArrowLeft, Fingerprint, Eye, EyeOff,
+  CheckCircle, ArrowLeft, Eye, EyeOff,
 } from 'lucide-react'
 
 type Mode = 'login' | 'signup' | 'forgot'
-
-const BIOMETRIC_KEY = 'sl-sport-biometric'
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login')
@@ -23,59 +21,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<'email-sent' | 'reset-sent' | null>(null)
-  const [biometricAvailable, setBiometricAvailable] = useState(false)
-  const [biometricLoading, setBiometricLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-
-  useEffect(() => {
-    const supported = typeof window !== 'undefined'
-      && 'credentials' in navigator
-      && 'PasswordCredential' in window
-    const hasStored = localStorage.getItem(BIOMETRIC_KEY) === 'true'
-    setBiometricAvailable(supported && hasStored)
-  }, [])
-
-  async function storeCredential(email: string, password: string) {
-    if (!('PasswordCredential' in window)) return
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cred = new (window as any).PasswordCredential({ id: email, password, name: email })
-      await navigator.credentials.store(cred)
-      localStorage.setItem(BIOMETRIC_KEY, 'true')
-    } catch { /* ignore */ }
-  }
-
-  async function handleBiometric() {
-    if (!('credentials' in navigator)) return
-    setBiometricLoading(true)
-    setError('')
-    try {
-      const cred = await navigator.credentials.get({
-        password: true,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mediation: 'required' as any,
-      })
-      if (!cred || cred.type !== 'password') throw new Error('Aucun identifiant biométrique trouvé')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pwCred = cred as any
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: pwCred.id,
-        password: pwCred.password,
-      })
-      if (signInError) throw signInError
-      router.push('/dashboard?tuto=1')
-      router.refresh()
-    } catch (err: unknown) {
-      const e = err as { message?: string }
-      const msg = e?.message ?? ''
-      if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
-        setError('Échec de la connexion biométrique')
-      }
-    } finally {
-      setBiometricLoading(false)
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -105,7 +52,6 @@ export default function LoginPage() {
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
         if (signInError) throw signInError
-        await storeCredential(email, password)
         router.push('/dashboard?tuto=1')
         router.refresh()
       }
@@ -298,40 +244,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Biometric login */}
-        {mode === 'login' && biometricAvailable && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
-              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>ou</span>
-              <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-            </div>
-
-            <button
-              onClick={handleBiometric}
-              disabled={biometricLoading}
-              style={{
-                width: '100%', padding: '0.875rem', borderRadius: '0.875rem',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-secondary)',
-                cursor: biometricLoading ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
-                fontFamily: 'inherit', fontSize: '0.9375rem', fontWeight: 600,
-                color: 'var(--text-primary)', transition: 'all 0.2s',
-                opacity: biometricLoading ? 0.7 : 1,
-              }}
-              onMouseEnter={e => { if (!biometricLoading) (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.5)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)' }}
-            >
-              {biometricLoading
-                ? <Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} />
-                : <Fingerprint size={22} color="var(--accent-blue)" />}
-              <span>
-                {biometricLoading ? 'Vérification...' : 'Connexion avec Face ID / Touch ID'}
-              </span>
-            </button>
-          </>
-        )}
+        {/* Biometric handled natively by browser via autocomplete="current-password" */}
       </div>
     </div>
   )
