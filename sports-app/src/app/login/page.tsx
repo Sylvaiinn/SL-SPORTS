@@ -54,15 +54,8 @@ export default function LoginPage() {
       const verData = await verRes.json()
       if (!verRes.ok) throw new Error(verData.error ?? 'Erreur serveur')
 
-      const { error: otpError } = await supabase.auth.verifyOtp({
-        email: verData.email,
-        token: verData.token,
-        type: 'magiclink',
-      })
-      if (otpError) throw new Error(otpError.message)
-
-      router.push('/dashboard')
-      router.refresh()
+      // Redirect to Supabase magic link — it will authenticate then redirect to /auth/callback
+      window.location.href = verData.action_link
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? String(e)
       if (msg.includes('credential manager') || msg.includes('unknown error')) {

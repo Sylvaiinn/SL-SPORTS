@@ -60,10 +60,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 })
   }
 
-  // Generate a one-time magic link token (createSession not available in this version)
+  // Generate a one-time magic link that will set the session via redirect
   const { data: linkData, error: linkError } = await service.auth.admin.generateLink({
     type: 'magiclink',
     email: userData.user.email,
+    options: {
+      redirectTo: `${ORIGIN}/auth/callback`,
+    },
   })
   if (linkError || !linkData) {
     return NextResponse.json({ error: linkError?.message ?? 'Impossible de créer la session' }, { status: 500 })
@@ -71,14 +74,8 @@ export async function POST(req: NextRequest) {
 
   cookieStore.delete('webauthn_auth_challenge')
 
-  // Parse the action_link to extract the raw token (needed for verifyOtp)
-  const actionLink = linkData.properties.action_link
-  const url = new URL(actionLink)
-  const token = url.searchParams.get('token') ?? linkData.properties.hashed_token
-
   return NextResponse.json({
     verified: true,
-    token,
-    email: userData.user.email,
+    action_link: linkData.properties.action_link,
   })
 }
