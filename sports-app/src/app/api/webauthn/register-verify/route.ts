@@ -48,5 +48,5 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   cookieStore.delete('webauthn_reg_challenge')
-  return NextResponse.json({ verified: true })
+  return NextResponse.json({ verified: true, credentialId: credential.id })
 }

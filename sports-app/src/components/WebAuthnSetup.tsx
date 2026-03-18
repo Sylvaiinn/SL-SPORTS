@@ -50,12 +50,13 @@ export default function WebAuthnSetup() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attestation),
       })
-      if (!verRes.ok) {
-        const body = await verRes.json().catch(() => ({ error: 'Erreur serveur' }))
-        throw new Error(body.error ?? 'Erreur serveur')
-      }
+      const verBody = await verRes.json().catch(() => ({ error: 'Erreur serveur' }))
+      if (!verRes.ok) throw new Error(verBody.error ?? 'Erreur serveur')
 
       localStorage.setItem('webauthn_registered', 'true')
+      if (verBody.credentialId) {
+        localStorage.setItem('webauthn_credential_id', verBody.credentialId)
+      }
       setRegistered(true)
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? String(e)
@@ -76,6 +77,7 @@ export default function WebAuthnSetup() {
       const res = await fetch('/api/webauthn/delete', { method: 'DELETE' })
       if (!res.ok) throw new Error('Erreur serveur')
       localStorage.removeItem('webauthn_registered')
+      localStorage.removeItem('webauthn_credential_id')
       setRegistered(false)
     } catch {
       setError('Impossible de réinitialiser. Réessaie.')

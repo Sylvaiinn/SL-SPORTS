@@ -9,16 +9,21 @@ export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
   const service = createServiceClient()
 
-  // Try to get email from body to find specific credentials (needed on Android)
+  // Try to get credentialId or email from body to find specific credentials (needed on Android)
   let allowCredentials: { id: string }[] = []
-  let emailWasProvided = false
+  let identifierProvided = false
 
   try {
     const body = await req.json().catch(() => ({}))
+    const credentialId = body.credentialId as string | undefined
     const email = body.email as string | undefined
 
-    if (email) {
-      emailWasProvided = true
+    if (credentialId) {
+      // Direct credential ID from localStorage — no email lookup needed
+      identifierProvided = true
+      allowCredentials = [{ id: credentialId }]
+    } else if (email) {
+      identifierProvided = true
 
       // Find user by email via admin API
       const { data: { users } } = await service.auth.admin.listUsers({ perPage: 1000 })
@@ -37,11 +42,11 @@ export async function POST(req: NextRequest) {
     }
   } catch { /* ignore — fall back to discoverable */ }
 
-  // If email was provided but no credentials found, return 404 so Android doesn't
+  // If an identifier was provided but no credentials found, return error so Android doesn't
   // fall back to discoverable mode (which triggers credential manager and fails on MIUI)
-  if (emailWasProvided && allowCredentials.length === 0) {
+  if (identifierProvided && allowCredentials.length === 0) {
     return NextResponse.json(
-      { error: 'Aucune empreinte enregistrée pour cet email.' },
+      { error: 'Aucune empreinte enregistrée pour cet compte.' },
       { status: 404 }
     )
   }

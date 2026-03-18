@@ -38,10 +38,16 @@ export default function LoginPage() {
   }, [])
 
   async function handleBiometric() {
-    if (!email) {
+    const storedCredentialId = typeof window !== 'undefined'
+      ? localStorage.getItem('webauthn_credential_id')
+      : null
+
+    // Need either a stored credential ID or an email to identify the user
+    if (!storedCredentialId && !email) {
       setError('Entrez votre email pour la connexion biométrique.')
       return
     }
+
     setBiometricLoading(true)
     setError('')
     setBiometricStep('Étape 1/4 : challenge…')
@@ -49,7 +55,7 @@ export default function LoginPage() {
       const optRes = await fetch('/api/webauthn/login-options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(storedCredentialId ? { credentialId: storedCredentialId } : { email }),
       })
       if (!optRes.ok) {
         const e = await optRes.json().catch(() => ({}))
