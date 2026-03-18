@@ -38,6 +38,10 @@ export default function LoginPage() {
   }, [])
 
   async function handleBiometric() {
+    if (!email) {
+      setError('Entrez votre email pour la connexion biométrique.')
+      return
+    }
     setBiometricLoading(true)
     setError('')
     setBiometricStep('Étape 1/4 : challenge…')
@@ -49,7 +53,7 @@ export default function LoginPage() {
       })
       if (!optRes.ok) {
         const e = await optRes.json().catch(() => ({}))
-        throw new Error(`[1/4 challenge] ${e.error ?? optRes.status}`)
+        throw new Error(e.error ?? `[1/4 challenge] ${optRes.status}`)
       }
       const options = await optRes.json()
 

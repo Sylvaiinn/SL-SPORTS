@@ -11,11 +11,15 @@ export async function POST(req: NextRequest) {
 
   // Try to get email from body to find specific credentials (needed on Android)
   let allowCredentials: { id: string }[] = []
+  let emailWasProvided = false
+
   try {
     const body = await req.json().catch(() => ({}))
     const email = body.email as string | undefined
 
     if (email) {
+      emailWasProvided = true
+
       // Find user by email via admin API
       const { data: { users } } = await service.auth.admin.listUsers({ perPage: 1000 })
       const user = users.find(u => u.email === email)
@@ -32,6 +36,15 @@ export async function POST(req: NextRequest) {
       }
     }
   } catch { /* ignore — fall back to discoverable */ }
+
+  // If email was provided but no credentials found, return 404 so Android doesn't
+  // fall back to discoverable mode (which triggers credential manager and fails on MIUI)
+  if (emailWasProvided && allowCredentials.length === 0) {
+    return NextResponse.json(
+      { error: 'Aucune empreinte enregistrée pour cet email.' },
+      { status: 404 }
+    )
+  }
 
   const options = await generateAuthenticationOptions({
     rpID: RP_ID,

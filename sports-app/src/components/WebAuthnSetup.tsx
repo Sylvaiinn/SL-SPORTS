@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { startRegistration } from '@simplewebauthn/browser'
-import { Fingerprint, CheckCircle, Loader2 } from 'lucide-react'
+import { Fingerprint, CheckCircle, Loader2, RotateCcw } from 'lucide-react'
 
 export default function WebAuthnSetup() {
   const [supported, setSupported] = useState<boolean | null>(null)
   const [registered, setRegistered] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -68,6 +69,21 @@ export default function WebAuthnSetup() {
     }
   }
 
+  async function handleDelete() {
+    setDeleting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/webauthn/delete', { method: 'DELETE' })
+      if (!res.ok) throw new Error('Erreur serveur')
+      localStorage.removeItem('webauthn_registered')
+      setRegistered(false)
+    } catch {
+      setError('Impossible de réinitialiser. Réessaie.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div
       id="connexion-empreinte"
@@ -114,13 +130,30 @@ export default function WebAuthnSetup() {
         </div>
 
         {registered ? (
-          <div style={{
-            padding: '0.4rem 0.75rem', borderRadius: '0.5rem',
-            background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)',
-            fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-green)',
-            flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.3rem',
-          }}>
-            <CheckCircle size={13} /> Activée
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'center' }}>
+            <div style={{
+              padding: '0.4rem 0.75rem', borderRadius: '0.5rem',
+              background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)',
+              fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-green)',
+              display: 'flex', alignItems: 'center', gap: '0.3rem',
+            }}>
+              <CheckCircle size={13} /> Activée
+            </div>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              title="Réinitialiser l'empreinte"
+              style={{
+                padding: '0.4rem 0.5rem', borderRadius: '0.5rem',
+                border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-muted)', cursor: deleting ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', opacity: deleting ? 0.6 : 1,
+              }}
+            >
+              {deleting
+                ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                : <RotateCcw size={13} />}
+            </button>
           </div>
         ) : (
           <button
