@@ -229,9 +229,9 @@ export default function Navbar() {
       )}
 
       {/* Mobile bottom bar */}
-      <nav className="md:hidden" style={{
+      <nav className="flex md:hidden" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-        display: 'flex', alignItems: 'stretch',
+        alignItems: 'stretch',
         minHeight: '64px',
         paddingBottom: 'env(safe-area-inset-bottom)',
         background: 'var(--bg-secondary)',

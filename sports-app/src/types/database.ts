@@ -68,6 +68,9 @@ export interface Database {
           date: string
           duration_minutes: number | null
           notes: string | null
+          is_public: boolean
+          volume_total_kg: number
+          template_id: string | null
           created_at: string
         }
         Insert: {
@@ -77,6 +80,9 @@ export interface Database {
           date: string
           duration_minutes?: number | null
           notes?: string | null
+          is_public?: boolean
+          volume_total_kg?: number
+          template_id?: string | null
           created_at?: string
         }
         Update: {
@@ -86,6 +92,9 @@ export interface Database {
           date?: string
           duration_minutes?: number | null
           notes?: string | null
+          is_public?: boolean
+          volume_total_kg?: number
+          template_id?: string | null
           created_at?: string
         }
       }
@@ -95,18 +104,62 @@ export interface Database {
           workout_id: string
           name: string
           order: number
+          muscle_groups: string[]
         }
         Insert: {
           id?: string
           workout_id: string
           name: string
           order: number
+          muscle_groups?: string[]
         }
         Update: {
           id?: string
           workout_id?: string
           name?: string
           order?: number
+          muscle_groups?: string[]
+        }
+      }
+      workout_templates: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          color: string
+          icon: string
+          exercises_json: Json
+          is_public: boolean
+          use_count: number
+          last_used_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          color?: string
+          icon?: string
+          exercises_json: Json
+          is_public?: boolean
+          use_count?: number
+          last_used_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          color?: string
+          icon?: string
+          exercises_json?: Json
+          is_public?: boolean
+          use_count?: number
+          last_used_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
       sets: {

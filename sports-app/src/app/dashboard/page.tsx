@@ -10,6 +10,7 @@ import ActivityHeatmap from '@/components/ActivityHeatmap'
 import WeekGoalBar from '@/components/WeekGoalBar'
 import InactivityBanner from '@/components/InactivityBanner'
 import ReprendreButton from '@/components/ReprendreButton'
+import CommunityTrophies from '@/components/CommunityTrophies'
 
 interface ExerciseRow { id: string; name: string }
 interface WorkoutRow { id: string; name: string; date: string; duration_minutes: number | null; exercises: ExerciseRow[] }
@@ -186,7 +187,7 @@ export default async function DashboardPage() {
 
       {/* Quick actions */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.625rem', marginBottom: '1.5rem' }}>
-        <Link href="/musculation/new" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', padding: '1rem 0.5rem' }}>
+        <Link href="/musculation" className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', padding: '1rem 0.5rem' }}>
           <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '0.625rem', background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Dumbbell size={16} color="white" />
           </div>
@@ -322,6 +323,11 @@ export default async function DashboardPage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* Community trophies */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <CommunityTrophies currentUserId={user.id} />
       </div>
     </div>
   )

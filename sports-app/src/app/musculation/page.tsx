@@ -1,76 +1,74 @@
-export const dynamic = 'force-dynamic'
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Dumbbell, PlusCircle, Calendar, ChevronRight } from 'lucide-react'
-import ExportCSVButton from '@/components/ExportCSVButton'
+'use client'
 
-export default async function MuscuPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+import { useState } from 'react'
+import { Dumbbell, PlusCircle, LayoutGrid, History, BarChart3 } from 'lucide-react'
+import WorkoutForm from './components/WorkoutForm'
+import TemplateManager from './components/TemplateManager'
+import WorkoutHistory from './components/WorkoutHistory'
+import WorkoutStats from './components/WorkoutStats'
 
-  const { data: workouts } = await supabase
-    .from('workouts')
-    .select('id, name, date, notes, exercises(id, name, sets(id))')
-    .eq('user_id', user.id)
-    .order('date', { ascending: false })
+const TABS = [
+  { id: 'new', label: 'Nouvelle', icon: PlusCircle },
+  { id: 'templates', label: 'Templates', icon: LayoutGrid },
+  { id: 'history', label: 'Historique', icon: History },
+  { id: 'stats', label: 'Stats', icon: BarChart3 },
+] as const
+
+type TabId = (typeof TABS)[number]['id']
+
+interface SelectedTemplate {
+  id: string
+  name: string
+  exercises_json: { name: string; sets: number; reps: string; muscle_groups: string[] }[]
+  [key: string]: unknown
+}
+
+export default function MuscuPage() {
+  const [tab, setTab] = useState<TabId>('new')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [selectedTemplate, setSelectedTemplate] = useState<SelectedTemplate | null>(null)
+
+  function handleSessionSaved() {
+    setRefreshKey(k => k + 1)
+    setTab('history')
+  }
 
   return (
     <div className="fade-in">
-      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <h1>Musculation</h1>
-          <p>Historique de vos séances</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
-          <ExportCSVButton />
-          <Link href="/musculation/new" className="btn btn-primary btn-sm" style={{ flexShrink: 0 }}>
-            <PlusCircle size={15} /> Nouvelle
-          </Link>
+      <div className="page-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Dumbbell size={18} color="var(--accent-blue)" />
+          </div>
+          <div>
+            <h1>Musculation</h1>
+            <p>Suivi de vos séances</p>
+          </div>
         </div>
       </div>
 
-      {!workouts || workouts.length === 0 ? (
-        <div className="empty-state">
-          <Dumbbell size={44} />
-          <h3>Aucune séance enregistrée</h3>
-          <p>Créez votre première séance pour commencer à suivre vos progrès</p>
-          <Link href="/musculation/new" className="btn btn-primary" style={{ marginTop: '1.25rem', display: 'inline-flex' }}>
-            <PlusCircle size={16} /> Commencer
-          </Link>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {workouts.map((w) => {
-            const exoList = Array.isArray(w.exercises) ? w.exercises : []
-            const totalSets = exoList.reduce((acc, ex) => acc + (Array.isArray(ex.sets) ? ex.sets.length : 0), 0)
-            return (
-              <Link key={w.id} href={`/musculation/${w.id}`} style={{ textDecoration: 'none' }}>
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ width: '3rem', height: '3rem', borderRadius: '0.875rem', background: 'linear-gradient(135deg, var(--accent-blue-glow), var(--accent-violet-glow))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(59,130,246,0.2)' }}>
-                    <Dumbbell size={18} color="var(--accent-blue)" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>{w.name}</div>
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <Calendar size={12} />
-                        {new Date(w.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <span className="badge badge-blue">{exoList.length} exo{exoList.length > 1 ? 's' : ''}</span>
-                      <span className="badge badge-violet">{totalSets} série{totalSets > 1 ? 's' : ''}</span>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
+      {/* Tab bar */}
+      <div className="tab-bar" style={{ overflowX: 'auto' }}>
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            className={`tab-bar-item ${tab === id ? 'active' : ''}`}
+            onClick={() => setTab(id)}
+            style={tab === id ? { background: 'var(--accent-blue)', color: 'white' } : {}}
+          >
+            <Icon size={14} />
+            <span style={{ fontSize: '0.8125rem' }}>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div key={tab} className="fade-in">
+        {tab === 'new' && <WorkoutForm onSaved={handleSessionSaved} initialTemplate={selectedTemplate} onTemplateConsumed={() => setSelectedTemplate(null)} />}
+        {tab === 'templates' && <TemplateManager onUseTemplate={(tpl) => { setSelectedTemplate(tpl as unknown as SelectedTemplate); setTab('new') }} key={refreshKey} />}
+        {tab === 'history' && <WorkoutHistory key={refreshKey} />}
+        {tab === 'stats' && <WorkoutStats key={refreshKey} />}
+      </div>
     </div>
   )
 }

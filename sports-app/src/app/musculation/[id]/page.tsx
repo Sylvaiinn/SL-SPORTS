@@ -2,12 +2,12 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Calendar, Dumbbell } from 'lucide-react'
+import { ChevronLeft, Calendar, Dumbbell, Clock, Eye, EyeOff, Weight } from 'lucide-react'
 import WorkoutActions from './WorkoutActions'
 
 interface SetRow { id: string; set_number: number; weight_kg: number | null; reps: number | null; notes: string | null }
-interface ExRow { id: string; name: string; order: number; sets: SetRow[] }
-interface WorkoutDetailRow { id: string; name: string; date: string; notes: string | null; exercises: ExRow[] }
+interface ExRow { id: string; name: string; order: number; muscle_groups: string[]; sets: SetRow[] }
+interface WorkoutDetailRow { id: string; name: string; date: string; notes: string | null; is_public: boolean; volume_total_kg: number; duration_minutes: number | null; exercises: ExRow[] }
 
 export default async function WorkoutDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -51,7 +51,21 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
       {/* Summary badges */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
         <span className="badge badge-blue">{exercises.length} exercice{exercises.length > 1 ? 's' : ''}</span>
-        <span className="badge badge-violet">{exercises.reduce((a: number, e: ExRow) => a + (Array.isArray(e.sets) ? e.sets.length : 0), 0)} séries au total</span>
+        <span className="badge badge-violet">{exercises.reduce((a: number, e: ExRow) => a + (Array.isArray(e.sets) ? e.sets.length : 0), 0)} séries</span>
+        {workout.duration_minutes != null && (
+          <span className="badge badge-amber" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Clock size={11} /> {workout.duration_minutes} min
+          </span>
+        )}
+        {workout.volume_total_kg > 0 && (
+          <span className="badge badge-blue" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Weight size={11} /> {Math.round(workout.volume_total_kg)} kg
+          </span>
+        )}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          {workout.is_public ? <Eye size={12} /> : <EyeOff size={12} />}
+          {workout.is_public ? 'Public' : 'Privé'}
+        </span>
       </div>
 
       {/* Exercises */}
@@ -68,6 +82,13 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
                 </div>
                 <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{ex.name}</span>
               </div>
+              {ex.muscle_groups && ex.muscle_groups.length > 0 && (
+                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                  {ex.muscle_groups.map((m: string) => (
+                    <span key={m} className="badge badge-blue" style={{ fontSize: '0.65rem', padding: '0.125rem 0.4rem' }}>{m}</span>
+                  ))}
+                </div>
+              )}
 
               {/* Sets table */}
               <div style={{ display: 'grid', gridTemplateColumns: '2rem 1fr 1fr', gap: '0.375rem' }}>
