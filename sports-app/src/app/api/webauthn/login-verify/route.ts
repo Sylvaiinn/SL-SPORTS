@@ -9,20 +9,23 @@ const ORIGIN = process.env.NEXT_PUBLIC_APP_ORIGIN ?? 'http://localhost:3000'
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
   const challenge = cookieStore.get('webauthn_auth_challenge')?.value
-  if (!challenge) return NextResponse.json({ error: 'Challenge expiré' }, { status: 400 })
+  if (!challenge) return NextResponse.json({ error: 'Challenge expiré, réessaie' }, { status: 400 })
 
   const body = await req.json()
   const service = createServiceClient()
 
-  // Find the credential in DB
-  const { data: cred } = await service
+  // Find credential in DB
+  const { data: cred, error: credError } = await service
     .from('webauthn_credentials')
     .select('*')
     .eq('credential_id', body.id)
     .single()
 
-  if (!cred) return NextResponse.json({ error: 'Identifiant inconnu' }, { status: 404 })
+  if (credError || !cred) {
+    return NextResponse.json({ error: 'Identifiant inconnu — enregistre l\'empreinte depuis ton profil' }, { status: 404 })
+  }
 
+  // Verify WebAuthn assertion
   let verification
   try {
     verification = await verifyAuthenticationResponse({
@@ -38,11 +41,11 @@ export async function POST(req: NextRequest) {
       requireUserVerification: true,
     })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 400 })
+    return NextResponse.json({ error: `Vérification échouée : ${String(e)}` }, { status: 400 })
   }
 
   if (!verification.verified) {
-    return NextResponse.json({ error: 'Vérification échouée' }, { status: 400 })
+    return NextResponse.json({ error: 'Vérification biométrique refusée' }, { status: 400 })
   }
 
   // Update counter
@@ -51,20 +54,25 @@ export async function POST(req: NextRequest) {
     .update({ counter: verification.authenticationInfo.newCounter })
     .eq('credential_id', cred.credential_id)
 
-  // Create a Supabase session for this user via admin API
-  const { data: sessionData, error: sessionError } = await service.auth.admin.createSession({
-    user_id: cred.user_id,
-  })
+  // Get user email to generate magic link
+  const { data: userData, error: userError } = await service.auth.admin.getUserById(cred.user_id)
+  if (userError || !userData.user?.email) {
+    return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 })
+  }
 
-  if (sessionError || !sessionData.session) {
-    return NextResponse.json({ error: 'Impossible de créer la session' }, { status: 500 })
+  // Generate a one-time magic link token (createSession not available in this version)
+  const { data: linkData, error: linkError } = await service.auth.admin.generateLink({
+    type: 'magiclink',
+    email: userData.user.email,
+  })
+  if (linkError || !linkData) {
+    return NextResponse.json({ error: linkError?.message ?? 'Impossible de créer la session' }, { status: 500 })
   }
 
   cookieStore.delete('webauthn_auth_challenge')
 
   return NextResponse.json({
     verified: true,
-    access_token: sessionData.session.access_token,
-    refresh_token: sessionData.session.refresh_token,
+    token_hash: linkData.properties.hashed_token,
   })
 }

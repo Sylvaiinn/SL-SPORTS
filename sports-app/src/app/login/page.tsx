@@ -41,7 +41,7 @@ export default function LoginPage() {
     setError('')
     try {
       const optRes = await fetch('/api/webauthn/login-options', { method: 'POST' })
-      if (!optRes.ok) throw new Error(await optRes.text())
+      if (!optRes.ok) throw new Error((await optRes.json()).error ?? 'Erreur serveur')
       const options = await optRes.json()
 
       const assertion = await startAuthentication({ optionsJSON: options })
@@ -51,16 +51,23 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(assertion),
       })
-      if (!verRes.ok) throw new Error((await verRes.json()).error)
-      const { access_token, refresh_token } = await verRes.json()
+      const verData = await verRes.json()
+      if (!verRes.ok) throw new Error(verData.error ?? 'Erreur serveur')
 
-      await supabase.auth.setSession({ access_token, refresh_token })
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        token_hash: verData.token_hash,
+        type: 'magiclink',
+      })
+      if (otpError) throw new Error(otpError.message)
+
       router.push('/dashboard')
       router.refresh()
     } catch (e: unknown) {
       const msg = (e as { message?: string })?.message ?? String(e)
-      if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
-        setError('Échec de la connexion biométrique')
+      if (msg.includes('credential manager') || msg.includes('unknown error')) {
+        setError('Ton navigateur ne supporte pas cette fonctionnalité. Utilise Chrome.')
+      } else if (!msg.includes('cancel') && !msg.includes('abort') && !msg.includes('NotAllowed')) {
+        setError(msg.length < 120 ? msg : 'Échec de la connexion biométrique')
       }
     } finally {
       setBiometricLoading(false)
