@@ -63,8 +63,12 @@ export default function MuscuPage() {
       </div>
 
       {/* Tab content */}
-      <div key={tab} className="fade-in">
-        {tab === 'new' && <WorkoutForm onSaved={handleSessionSaved} initialTemplate={selectedTemplate} onTemplateConsumed={() => setSelectedTemplate(null)} />}
+      {/* Bug #6 fix: utiliser display:none plutôt que key={tab} pour ne pas détruire l'état
+          du WorkoutForm (workout en cours) à chaque changement d'onglet */}
+      <div className="fade-in">
+        <div style={{ display: tab === 'new' ? 'block' : 'none' }}>
+          <WorkoutForm onSaved={handleSessionSaved} initialTemplate={selectedTemplate} onTemplateConsumed={() => setSelectedTemplate(null)} />
+        </div>
         {tab === 'templates' && <TemplateManager onUseTemplate={(tpl) => { setSelectedTemplate(tpl as unknown as SelectedTemplate); setTab('new') }} key={refreshKey} />}
         {tab === 'history' && <WorkoutHistory key={refreshKey} />}
         {tab === 'stats' && <WorkoutStats key={refreshKey} />}

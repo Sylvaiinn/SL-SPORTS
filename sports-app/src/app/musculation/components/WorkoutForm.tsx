@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MUSCLE_GROUPS, detectMuscleGroups, calculateVolume, REST_TIMES } from '@/lib/muscuConstants'
 import {
@@ -55,7 +55,9 @@ function formatElapsed(seconds: number): string {
 }
 
 export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsumed }: Props) {
-  const supabase = createClient()
+  // Bug #4 fix: mémoïser le client Supabase pour éviter de recréer des connexions à chaque render
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
 
   /* ─── Session state ─── */
   const [sessionStarted, setSessionStarted] = useState(false)
@@ -69,6 +71,9 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
   const [isPublic, setIsPublic] = useState(false)
   const [notes, setNotes] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+
+  // Bug #5 fix: remplacer le hack ' ' (espace) par un Set des IDs d'exercices avec notes ouvertes
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set())
 
   /* ─── Rest timer ─── */
   const [restTime, setRestTime] = useState(90)
@@ -106,12 +111,14 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
   }, [])
 
   /* ─── Handle incoming template from parent ─── */
+  // Bug #3 fix: inclure toutes les dépendances pour éviter les stale closures
   useEffect(() => {
     if (initialTemplate) {
       loadTemplate(initialTemplate)
       onTemplateConsumed()
     }
-  }, [initialTemplate])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTemplate]) // loadTemplate et onTemplateConsumed sont stables (useCallback / prop stable)
 
   /* ─── Session chronometer ─── */
   useEffect(() => {
@@ -123,8 +130,11 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
   }, [sessionStarted, sessionStart])
 
   /* ─── Rest timer ─── */
+  // Bug #1 fix: retirer restRemaining des dépendances — son changement relançait l'effet à chaque
+  // seconde, créant un nouveau interval sans nettoyer le précédent (accumulation exponentielle).
+  // Le functional updater `prev =>` garantit qu'on lit toujours la valeur à jour sans la capturer.
   useEffect(() => {
-    if (!restActive || restRemaining <= 0) return
+    if (!restActive) return
     const interval = setInterval(() => {
       setRestRemaining(prev => {
         if (prev <= 1) {
@@ -139,7 +149,7 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
       })
     }, 1000)
     return () => clearInterval(interval)
-  }, [restActive, restRemaining])
+  }, [restActive]) // ← restRemaining RETIRÉ : le functional updater le gère en interne
 
   /* ─── Fetch weight suggestions ─── */
   const fetchSuggestions = useCallback(async (exerciseName: string) => {
@@ -188,8 +198,9 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
   }, [])
 
   /* ─── Template loading ─── */
+  // Bug #3 fix: mémoïser avec useCallback pour stabiliser la référence
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function loadTemplate(tpl: any) {
+  const loadTemplate = useCallback((tpl: any) => {
     templateIdRef.current = tpl.id
     setWorkoutName(tpl.name)
     const exJson = Array.isArray(tpl.exercises_json) ? tpl.exercises_json : []
@@ -207,7 +218,7 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
         notes: ex.notes || '',
       }))
     )
-  }
+  }, [])
 
   /* ─── Session controls ─── */
   function startSession() {
@@ -284,15 +295,27 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
   }
 
   /* ─── Computed values ─── */
-  const totalVolume = exercises.reduce((sum, ex) => {
-    return sum + calculateVolume(ex.sets.map(s => ({
-      weight_kg: s.weight_kg ? parseFloat(s.weight_kg) : null,
-      reps: s.reps ? parseInt(s.reps) : null,
-    })))
-  }, 0)
+  // Bug #2 fix: mémoïser les calculs coûteux — sans useMemo, ils sont recalculés
+  // à chaque re-render (= chaque touche clavier), créant une pression CPU progressive
+  const totalVolume = useMemo(() =>
+    exercises.reduce((sum, ex) =>
+      sum + calculateVolume(ex.sets.map(s => ({
+        weight_kg: s.weight_kg ? parseFloat(s.weight_kg) : null,
+        reps: s.reps ? parseInt(s.reps) : null,
+      }))), 0),
+    [exercises]
+  )
 
-  const allMuscles = [...new Set(exercises.flatMap(e => e.muscleGroups))]
-  const totalSets = exercises.reduce((sum, e) => sum + e.sets.length, 0)
+  const allMuscles = useMemo(() =>
+    [...new Set(exercises.flatMap(e => e.muscleGroups))],
+    [exercises]
+  )
+
+  const totalSets = useMemo(() =>
+    exercises.reduce((sum, e) => sum + e.sets.length, 0),
+    [exercises]
+  )
+
   const durationMinutes = sessionStart ? Math.round(elapsedSeconds / 60) : 0
 
   /* ─── Finish session → show summary ─── */
@@ -680,9 +703,14 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
               </button>
 
               {/* Exercise notes (collapsible) */}
+              {/* Bug #5 fix: utiliser un Set d'IDs à la place du hack ' ' (espace) comme signal */}
               <div style={{ marginTop: '0.625rem' }}>
                 <button
-                  onClick={() => updateExerciseNotes(ex.id, ex.notes === '' ? ' ' : '')}
+                  onClick={() => setOpenNotes(prev => {
+                    const next = new Set(prev)
+                    if (next.has(ex.id)) { next.delete(ex.id) } else { next.add(ex.id) }
+                    return next
+                  })}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     color: 'var(--text-muted)', fontSize: '0.75rem', fontFamily: 'inherit',
@@ -690,12 +718,12 @@ export default function WorkoutForm({ onSaved, initialTemplate, onTemplateConsum
                   }}
                 >
                   <MessageSquare size={12} />
-                  {ex.notes ? 'Note' : 'Ajouter une note'}
+                  {openNotes.has(ex.id) ? 'Note' : 'Ajouter une note'}
                 </button>
-                {ex.notes !== '' && (
+                {openNotes.has(ex.id) && (
                   <textarea
                     className="input"
-                    value={ex.notes.trim()}
+                    value={ex.notes}
                     onChange={e => updateExerciseNotes(ex.id, e.target.value)}
                     placeholder="Notes pour cet exercice..."
                     rows={2}

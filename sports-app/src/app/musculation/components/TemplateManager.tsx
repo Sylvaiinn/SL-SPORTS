@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MUSCLE_GROUPS, TEMPLATE_ICONS, TEMPLATE_COLORS } from '@/lib/muscuConstants'
 import {
@@ -49,7 +49,9 @@ function formatDate(dateStr: string | null): string {
    COMPONENT
    ═══════════════════════════════════════════════════════════════════════════════ */
 export default function TemplateManager({ onUseTemplate }: Props) {
-  const supabase = createClient()
+  // Bug #4 fix: mémoïser le client Supabase pour éviter de recréer des connexions à chaque render
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
 
   /* ─── State ─── */
   const [userId, setUserId] = useState<string | null>(null)
