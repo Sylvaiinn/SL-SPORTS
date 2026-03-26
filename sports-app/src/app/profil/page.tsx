@@ -165,6 +165,14 @@ export default async function ProfilPage() {
       <div style={{ marginTop: '1rem' }}>
         <LogoutButton />
       </div>
+
+      {/* Legal links */}
+      <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+        <a href="/legal/mentions-legales" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Mentions légales</a>
+        <a href="/legal/confidentialite" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Confidentialité</a>
+        <a href="/legal/cgu" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>CGU</a>
+      </div>
+      <p style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.5, marginTop: '0.5rem' }}>© 2025 SPORTS.SL</p>
     </div>
   )
 }

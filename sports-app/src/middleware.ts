@@ -35,6 +35,11 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Legal pages — publicly accessible
+  if (pathname.startsWith('/legal/') || pathname === '/legal') {
+    return supabaseResponse
+  }
+
   if (pathname === '/login' || pathname === '/auth/reset-password' || pathname === '/auth/callback') {
     if (user) {
       return NextResponse.redirect(new URL('/dashboard', request.url))

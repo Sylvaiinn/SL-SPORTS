@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { startAuthentication } from '@simplewebauthn/browser'
+import Link from 'next/link'
 import {
   Dumbbell, Mail, Lock, User, AlertCircle, Loader2,
   CheckCircle, ArrowLeft, Eye, EyeOff, Fingerprint, Smartphone,
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<'email-sent' | 'reset-sent' | null>(null)
+  const [rgpdConsent, setRgpdConsent] = useState(false)
   const [showPwaSteps, setShowPwaSteps] = useState(false)
   const [pwaCopied, setPwaCopied] = useState(false)
   const router = useRouter()
@@ -365,6 +367,26 @@ export default function LoginPage() {
             </div>
           )}
 
+          {mode === 'signup' && (
+            <label style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', cursor: 'pointer', padding: '0.75rem', borderRadius: '0.625rem', background: rgpdConsent ? 'rgba(59,130,246,0.07)' : 'var(--bg-secondary)', border: `1px solid ${rgpdConsent ? 'rgba(59,130,246,0.3)' : 'var(--border)'}`, transition: 'all 0.2s' }}>
+              <input
+                type="checkbox"
+                checked={rgpdConsent}
+                onChange={e => setRgpdConsent(e.target.checked)}
+                required
+                style={{ marginTop: '0.15rem', flexShrink: 0, accentColor: 'var(--accent-blue)', width: '1rem', height: '1rem', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                J&apos;accepte les{' '}
+                <Link href="/legal/cgu" target="_blank" style={{ color: 'var(--accent-blue)', textDecoration: 'underline' }}>CGU</Link>
+                {' '}et la{' '}
+                <Link href="/legal/confidentialite" target="_blank" style={{ color: 'var(--accent-blue)', textDecoration: 'underline' }}>Politique de confidentialité</Link>
+                , y compris le traitement de mes données sportives (poids, performances, fréquence cardiaque) conformément au RGPD.{' '}
+                <span style={{ color: '#f87171' }}>*</span>
+              </span>
+            </label>
+          )}
+
           {error && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '0.625rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontSize: '0.875rem' }}>
               <AlertCircle size={16} style={{ flexShrink: 0 }} />
@@ -383,6 +405,13 @@ export default function LoginPage() {
                   : 'Envoyer le lien'}
           </button>
         </form>
+
+        {/* Legal links */}
+        <div style={{ marginTop: '1.5rem', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <Link href="/legal/mentions-legales" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Mentions légales</Link>
+          <Link href="/legal/confidentialite" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Confidentialité</Link>
+          <Link href="/legal/cgu" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>CGU</Link>
+        </div>
 
         {/* Fingerprint / WebAuthn login */}
         {mode === 'login' && biometricAvailable && (
