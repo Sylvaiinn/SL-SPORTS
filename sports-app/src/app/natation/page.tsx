@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -84,7 +84,7 @@ function BlockCard({ block }: { block: SwimBlock }) {
 
 type TabId = 'generate' | 'manual' | 'history'
 
-export default function NatationPage() {
+function NatationPageInner() {
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -492,5 +492,13 @@ export default function NatationPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function NatationPage() {
+  return (
+    <Suspense>
+      <NatationPageInner />
+    </Suspense>
   )
 }
