@@ -10,6 +10,7 @@ import TrophyGrid from './components/TrophyGrid'
 import WeightChart from './components/WeightChart'
 import GoalSection from './components/GoalSection'
 import WebAuthnSetup from '@/components/WebAuthnSetup'
+import ProfileSessions from './components/ProfileSessions'
 import type { TrophyStats } from '@/lib/trophyEngine'
 
 interface ProfileRow {
@@ -150,6 +151,8 @@ export default async function ProfilPage() {
         currentStreak={currentStreak}
         bestStreak={bestStreak}
       />
+
+      <ProfileSessions userId={user.id} />
 
       <TrophyGrid stats={trophyStats} initialUnlocked={unlockedKeys} />
 

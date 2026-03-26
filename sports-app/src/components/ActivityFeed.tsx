@@ -35,55 +35,55 @@ function Avatar({ profile }: { profile: ProfileInfo }) {
 export default async function ActivityFeed({ currentUserId }: { currentUserId: string }) {
   const supabase = await createClient()
 
-  // Get public profiles (excluding self)
-  const { data: publicProfiles } = await supabase
-    .from('profiles')
-    .select('id, username, avatar_url')
-    .eq('is_public', true)
-    .neq('id', currentUserId)
-    .limit(50)
+  // Fetch other public profiles + own profile separately
+  const [{ data: otherProfiles }, { data: ownProfileData }] = await Promise.all([
+    supabase.from('profiles').select('id, username, avatar_url').eq('is_public', true).neq('id', currentUserId).limit(50),
+    supabase.from('profiles').select('id, username, avatar_url').eq('id', currentUserId).single(),
+  ])
 
-  if (!publicProfiles || publicProfiles.length === 0) return null
+  const ownProfile = ownProfileData as ProfileInfo | null
+  const allProfiles = [...(otherProfiles ?? []), ...(ownProfile ? [ownProfile] : [])]
 
-  const profileIds = publicProfiles.map(p => p.id)
-  const profileMap = Object.fromEntries(publicProfiles.map(p => [p.id, p])) as Record<string, ProfileInfo>
+  if (allProfiles.length === 0) return null
 
+  const otherIds = (otherProfiles ?? []).map((p: ProfileInfo) => p.id)
+  const allIds = allProfiles.map((p: ProfileInfo) => p.id)
+  const profileMap = Object.fromEntries(allProfiles.map((p: ProfileInfo) => [p.id, p])) as Record<string, ProfileInfo>
+
+  // Fetch sessions: public workouts from others + own workouts (all) + swim/run from all
   const [
-    { data: rawWorkouts },
+    { data: rawOtherWorkouts },
+    { data: rawOwnWorkouts },
     { data: rawSwims },
     { data: rawRuns },
   ] = await Promise.all([
-    supabase.from('workouts')
-      .select('id, name, date, duration_minutes, user_id')
-      .eq('is_public', true)
-      .in('user_id', profileIds)
-      .order('date', { ascending: false })
-      .limit(10),
-    supabase.from('swim_sessions')
-      .select('id, style, distance_m, date, user_id')
-      .in('user_id', profileIds)
-      .order('date', { ascending: false })
-      .limit(10),
-    supabase.from('run_sessions')
-      .select('id, distance_km, duration_seconds, type, date, user_id')
-      .in('user_id', profileIds)
-      .order('date', { ascending: false })
-      .limit(10),
+    otherIds.length > 0
+      ? supabase.from('workouts').select('id, name, date, duration_minutes, user_id').eq('is_public', true).in('user_id', otherIds).order('date', { ascending: false }).limit(10)
+      : { data: [] as { id: string; name: string; date: string; duration_minutes: number | null; user_id: string }[] },
+    supabase.from('workouts').select('id, name, date, duration_minutes, user_id').eq('user_id', currentUserId).order('date', { ascending: false }).limit(10),
+    supabase.from('swim_sessions').select('id, style, distance_m, date, user_id').in('user_id', allIds).order('date', { ascending: false }).limit(15),
+    supabase.from('run_sessions').select('id, distance_km, duration_seconds, type, date, user_id').in('user_id', allIds).order('date', { ascending: false }).limit(15),
   ])
 
+  // Merge workouts, deduplicate
+  const workoutMap = new Map<string, { id: string; name: string; date: string; duration_minutes: number | null; user_id: string }>()
+  for (const w of [...(rawOtherWorkouts ?? []), ...(rawOwnWorkouts ?? [])]) {
+    if (w) workoutMap.set(w.id, w)
+  }
+
   const items: FeedItem[] = [
-    ...(rawWorkouts ?? []).map(w => ({
+    ...Array.from(workoutMap.values()).map(w => ({
       kind: 'muscu' as const,
       id: w.id, date: w.date, name: w.name,
       duration_minutes: w.duration_minutes,
       profile: profileMap[w.user_id],
     })),
-    ...(rawSwims ?? []).map(s => ({
+    ...(rawSwims ?? []).map((s: { id: string; style: string; distance_m: number; date: string; user_id: string }) => ({
       kind: 'swim' as const,
       id: s.id, date: s.date, style: s.style, distance_m: s.distance_m,
       profile: profileMap[s.user_id],
     })),
-    ...(rawRuns ?? []).map(r => ({
+    ...(rawRuns ?? []).map((r: { id: string; distance_km: number; duration_seconds: number; type: string; date: string; user_id: string }) => ({
       kind: 'run' as const,
       id: r.id, date: r.date, distance_km: r.distance_km,
       duration_seconds: r.duration_seconds, runType: r.type,
@@ -92,7 +92,7 @@ export default async function ActivityFeed({ currentUserId }: { currentUserId: s
   ]
     .filter(item => item.profile != null)
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 8)
+    .slice(0, 12)
 
   if (items.length === 0) return null
 
@@ -101,7 +101,16 @@ export default async function ActivityFeed({ currentUserId }: { currentUserId: s
       <h2 className="section-title" style={{ marginBottom: '0.75rem' }}>Fil d&apos;actualité</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {items.map(item => {
+          const isSelf = item.profile.id === currentUserId
           const dateLabel = new Date(item.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+
+          const actorEl = isSelf ? (
+            <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--accent-blue)' }}>Vous</span>
+          ) : (
+            <Link href={`/profil/${item.profile.username}`} style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)', textDecoration: 'none' }}>
+              {item.profile.username}
+            </Link>
+          )
 
           if (item.kind === 'muscu') {
             return (
@@ -109,10 +118,8 @@ export default async function ActivityFeed({ currentUserId }: { currentUserId: s
                 <Avatar profile={item.profile} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                    <Link href={`/profil/${item.profile.username}`} style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)', textDecoration: 'none' }}>
-                      {item.profile.username}
-                    </Link>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>a fait</span>
+                    {actorEl}
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{isSelf ? 'avez fait' : 'a fait'}</span>
                     <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#c4b5fd' }}>{item.name}</span>
                     <span className="session-badge-muscu">Muscu</span>
                   </div>
@@ -138,10 +145,8 @@ export default async function ActivityFeed({ currentUserId }: { currentUserId: s
                 <Avatar profile={item.profile} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                    <Link href={`/profil/${item.profile.username}`} style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)', textDecoration: 'none' }}>
-                      {item.profile.username}
-                    </Link>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>a nagé</span>
+                    {actorEl}
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{isSelf ? 'avez nagé' : 'a nagé'}</span>
                     <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--accent-blue)' }}>{item.distance_m}m</span>
                     <span className="session-badge-swim">Natation</span>
                   </div>
@@ -163,10 +168,8 @@ export default async function ActivityFeed({ currentUserId }: { currentUserId: s
                 <Avatar profile={item.profile} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                    <Link href={`/profil/${item.profile.username}`} style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)', textDecoration: 'none' }}>
-                      {item.profile.username}
-                    </Link>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>a couru</span>
+                    {actorEl}
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{isSelf ? 'avez couru' : 'a couru'}</span>
                     <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--accent-green)' }}>{item.distance_km.toFixed(1)} km</span>
                     <span className="session-badge-run">Course</span>
                   </div>

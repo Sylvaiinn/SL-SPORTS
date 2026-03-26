@@ -18,6 +18,7 @@ import {
   Pencil,
 } from 'lucide-react'
 import Link from 'next/link'
+import ShareButton from '@/components/ShareButton'
 
 // ── Types ──────────────────────────────────────────────
 interface SetRow {
@@ -558,7 +559,35 @@ export default function WorkoutHistory() {
                 )}
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <ShareButton session={{
+                    type: 'muscu',
+                    title: w.name,
+                    date: w.date,
+                    stats: [
+                      { label: 'Exercices', value: String((w.exercises ?? []).length) },
+                      { label: 'Séries', value: String((w.exercises ?? []).reduce((a: number, e: ExerciseRow) => a + (e.sets ?? []).length, 0)) },
+                      ...(w.duration_minutes ? [{ label: 'Durée', value: `${w.duration_minutes} min` }] : []),
+                      ...(computeVolume(w) > 0 ? [{ label: 'Volume', value: `${Math.round(computeVolume(w))} kg` }] : []),
+                    ],
+                    exercises: [...(w.exercises ?? [])].sort((a, b) => a.order - b.order).map((ex: ExerciseRow) => {
+                      const sets = (ex.sets ?? [])
+                      const best = sets.reduce<SetRow | null>((b, s) => {
+                        if (!b) return s
+                        if ((s.weight_kg ?? 0) > (b.weight_kg ?? 0)) return s
+                        if ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) return s
+                        return b
+                      }, null)
+                      const topSet = best
+                        ? best.weight_kg && best.reps ? `${best.weight_kg} kg × ${best.reps}`
+                          : best.weight_kg ? `${best.weight_kg} kg`
+                          : best.reps ? `${best.reps} reps`
+                          : '—'
+                        : '—'
+                      return { name: ex.name, topSet }
+                    }),
+                  }} />
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <Link
                     href={`/musculation/${w.id}/edit`}
                     className="btn btn-ghost btn-sm"
@@ -614,6 +643,7 @@ export default function WorkoutHistory() {
                       Supprimer
                     </button>
                   )}
+                  </div>
                 </div>
               </div>
             )}
