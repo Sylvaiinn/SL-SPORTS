@@ -42,6 +42,12 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Landing page publique — connecté → dashboard, sinon landing
+  if (pathname === '/') {
+    if (user) return NextResponse.redirect(new URL('/dashboard', request.url))
+    return supabaseResponse
+  }
+
   // Public profile pages (e.g., /profil/username)
   if (/^\/profil\/[^/]+$/.test(pathname) && pathname !== '/profil') {
     return supabaseResponse
