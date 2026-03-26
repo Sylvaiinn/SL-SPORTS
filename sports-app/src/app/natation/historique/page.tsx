@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Waves, ChevronDown, ChevronUp, Pencil, Trash2, Save, Loader2, X, CheckCircle, Play, History, Trophy, TrendingUp } from 'lucide-react'
+import ShareButton from '@/components/ShareButton'
 
 type SwimStyle = 'Endurance' | 'Vitesse' | 'Technique' | 'Mixte'
 
@@ -93,7 +94,18 @@ function SwimSessionCard({ session, onUpdated, onDeleted }: {
             <span className="badge badge-gray">{allBlocks.length} blocs</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0, alignItems: 'center' }}>
+          <ShareButton session={{
+            type: 'swim',
+            title: `Natation ${session.style}`,
+            date: session.date,
+            stats: [
+              { label: 'Distance', value: session.distance_m >= 1000 ? `${(session.distance_m / 1000).toFixed(1)} km` : `${session.distance_m} m` },
+              { label: 'Style', value: session.style },
+              ...(allBlocks.length > 0 ? [{ label: 'Blocs', value: String(allBlocks.length) }] : []),
+              ...(plan?.level ? [{ label: 'Niveau', value: plan.level }] : []),
+            ],
+          }} />
           <button onClick={() => setEditingNotes(v => !v)} className="btn-icon" style={{ background: 'var(--accent-blue-glow)', color: 'var(--accent-blue)' }} title="Description">
             <Pencil size={14} />
           </button>

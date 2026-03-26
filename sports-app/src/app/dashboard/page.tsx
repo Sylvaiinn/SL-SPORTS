@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Dumbbell, Waves, Footprints, TrendingUp, PlusCircle, Flame, ChevronRight, Clock } from 'lucide-react'
+import { Dumbbell, Waves, Footprints, TrendingUp, PlusCircle, Flame, ChevronRight, Clock, Pencil, Weight } from 'lucide-react'
 import { calculateStreak, detectMuscles, getCurrentWeekBounds, getLastWeekBounds, toDateStr } from '@/lib/dashboardUtils'
 import { formatPace } from '@/lib/runUtils'
 import ActivityCalendar from '@/components/ActivityCalendar'
@@ -13,6 +13,7 @@ import ReprendreButton from '@/components/ReprendreButton'
 import CommunityTrophies from '@/components/CommunityTrophies'
 import TutorialButton from '@/components/TutorialButton'
 import WebAuthnBanner from '@/components/WebAuthnBanner'
+import ActivityFeed from '@/components/ActivityFeed'
 
 interface ExerciseRow { id: string; name: string }
 interface WorkoutRow { id: string; name: string; date: string; duration_minutes: number | null; exercises: ExerciseRow[] }
@@ -34,8 +35,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (!user) redirect('/login')
 
   // Profile
-  const { data: rawProfile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
-  const profile = rawProfile as { username: string | null } | null
+  const { data: rawProfile } = await supabase.from('profiles').select('username, weight_kg, weekly_goal').eq('id', user.id).single()
+  const profile = rawProfile as { username: string | null; weight_kg: number | null; weekly_goal: number } | null
 
   // Last 30 days
   const thirtyAgo = new Date(); thirtyAgo.setDate(thirtyAgo.getDate() - 30)
@@ -136,14 +137,35 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
+      {/* Activity feed — latest public sessions from the community */}
+      <ActivityFeed currentUserId={user.id} />
+
       {/* WebAuthn fingerprint activation banner */}
       <WebAuthnBanner />
 
       {/* Inactivity banner */}
       <InactivityBanner daysSinceLastSession={daysSinceLast} />
 
+      {/* Weight + weekly goal info bar */}
+      {profile?.weight_kg && (
+        <div className="card" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            <div style={{ width: '2rem', height: '2rem', borderRadius: '0.5rem', background: 'var(--accent-amber-glow, rgba(245,158,11,0.15))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Weight size={14} color="#f59e0b" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Poids</div>
+              <div style={{ fontWeight: 800, fontSize: '1.0625rem', color: 'var(--text-primary)' }}>{profile.weight_kg} kg</div>
+            </div>
+          </div>
+          <Link href="/profil" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '1.75rem', height: '1.75rem', borderRadius: '0.5rem', background: 'var(--bg-secondary)', color: 'var(--text-muted)', textDecoration: 'none' }}>
+            <Pencil size={13} />
+          </Link>
+        </div>
+      )}
+
       {/* Weekly goal bar */}
-      <WeekGoalBar currentCount={thisWeekTotal} />
+      <WeekGoalBar currentCount={thisWeekTotal} goal={profile?.weekly_goal ?? 4} />
 
       {/* Weekly summary */}
       <div className="card" style={{ marginBottom: '1.25rem', background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.06))' }}>

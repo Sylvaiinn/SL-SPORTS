@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { TEMPLATES, type Template } from '@/lib/templates'
@@ -39,6 +39,78 @@ export default function NewWorkoutPage() {
   const [error, setError] = useState('')
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
 
+  // Known exercises from past workouts: name → last weight used
+  const [knownExercises, setKnownExercises] = useState<string[]>([])
+  const [lastWeightMap, setLastWeightMap] = useState<Record<string, string>>({})
+
+  // Load historical exercises on mount
+  useEffect(() => {
+    async function loadHistory() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Get all workouts for this user
+      const { data: workoutsData } = await supabase
+        .from('workouts')
+        .select('id, date')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+      if (!workoutsData || workoutsData.length === 0) return
+
+      const workoutIds = workoutsData.map(w => w.id)
+      const workoutDateById: Record<string, string> = {}
+      workoutsData.forEach(w => { workoutDateById[w.id] = w.date })
+
+      // Get exercises + sets for these workouts
+      const { data: exosData } = await supabase
+        .from('exercises')
+        .select('id, name, workout_id, sets(weight_kg)')
+        .in('workout_id', workoutIds)
+      if (!exosData) return
+
+      // Build name → last weight map (most recent workout per exercise name)
+      const nameToDate: Record<string, string> = {}
+      const nameToWeight: Record<string, string> = {}
+
+      for (const exo of exosData as { id: string; name: string; workout_id: string; sets: { weight_kg: number | null }[] }[]) {
+        const exoDate = workoutDateById[exo.workout_id] ?? ''
+        if (!nameToDate[exo.name] || exoDate > nameToDate[exo.name]) {
+          nameToDate[exo.name] = exoDate
+          // Find the max weight used in this exercise
+          const weights = (exo.sets ?? [])
+            .map(s => s.weight_kg)
+            .filter((w): w is number => w !== null && w > 0)
+          if (weights.length > 0) {
+            nameToWeight[exo.name] = String(Math.max(...weights))
+          }
+        }
+      }
+
+      const names = [...new Set(exosData.map(e => e.name))].sort()
+      setKnownExercises(names)
+      setLastWeightMap(nameToWeight)
+    }
+    loadHistory()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // When user selects a known exercise, pre-fill weight from history
+  const handleExerciseNameChange = useCallback((exId: string, name: string) => {
+    setExercises(prev => prev.map(e => {
+      if (e.id !== exId) return e
+      const lastWeight = lastWeightMap[name]
+      if (lastWeight) {
+        // Pre-fill all existing sets with last known weight
+        return {
+          ...e,
+          name,
+          sets: e.sets.map(s => ({ ...s, weight_kg: s.weight_kg || lastWeight })),
+        }
+      }
+      return { ...e, name }
+    }))
+  }, [lastWeightMap])
+
   function loadTemplate(t: Template) {
     setActiveTemplate(t.id)
     setWorkoutName(t.name)
@@ -48,7 +120,7 @@ export default function NewWorkoutPage() {
         name: ex.name,
         sets: Array.from({ length: ex.sets }, (_, j) => ({
           set_number: j + 1,
-          weight_kg: '',
+          weight_kg: lastWeightMap[ex.name] ?? '',
           reps: ex.reps.split('-')[0],
         })),
       }))
@@ -61,10 +133,6 @@ export default function NewWorkoutPage() {
 
   function removeExercise(id: string) {
     setExercises((prev) => prev.filter((e) => e.id !== id))
-  }
-
-  function updateExerciseName(id: string, name: string) {
-    setExercises((prev) => prev.map((e) => (e.id === id ? { ...e, name } : e)))
   }
 
   function addSet(exId: string) {
@@ -147,6 +215,11 @@ export default function NewWorkoutPage() {
 
   return (
     <div className="fade-in">
+      {/* Datalist for exercise autocomplete */}
+      <datalist id="exercises-list">
+        {knownExercises.map(name => <option key={name} value={name} />)}
+      </datalist>
+
       {/* Header */}
       <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <button onClick={() => router.back()} className="btn btn-ghost btn-sm" style={{ padding: '0.5rem' }}>
@@ -215,72 +288,83 @@ export default function NewWorkoutPage() {
           <h2 style={{ fontWeight: 700, fontSize: '1.0625rem', color: 'var(--text-primary)' }}>Exercices ({exercises.length})</h2>
         </div>
 
-        {exercises.map((ex, exIdx) => (
-          <div key={ex.id} className="exercise-card">
-            {/* Exercise header */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
-              <div style={{ width: '1.75rem', height: '1.75rem', borderRadius: '0.5rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)' }}>
-                {exIdx + 1}
-              </div>
-              <input
-                className="input"
-                type="text"
-                placeholder="Nom de l'exercice"
-                value={ex.name}
-                onChange={(e) => updateExerciseName(ex.id, e.target.value)}
-                style={{ flex: 1 }}
-              />
-              {exercises.length > 1 && (
-                <button onClick={() => removeExercise(ex.id)} className="btn-icon btn-icon-danger">
-                  <Trash2 size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* Sets header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2rem 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.375rem' }}>
-              <div />
-              <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Poids (kg)</div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reps</div>
-              <div />
-            </div>
-
-            {/* Sets */}
-            {ex.sets.map((set, setIdx) => (
-              <div key={setIdx} className="set-row">
-                <div className="set-number">{set.set_number}</div>
+        {exercises.map((ex, exIdx) => {
+          const lastW = lastWeightMap[ex.name]
+          return (
+            <div key={ex.id} className="exercise-card">
+              {/* Exercise header */}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                <div style={{ width: '1.75rem', height: '1.75rem', borderRadius: '0.5rem', background: 'var(--accent-blue-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)' }}>
+                  {exIdx + 1}
+                </div>
                 <input
                   className="input"
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  placeholder="0"
-                  value={set.weight_kg}
-                  onChange={(e) => updateSet(ex.id, setIdx, 'weight_kg', e.target.value)}
-                  style={{ padding: '0.45rem 0.6rem', textAlign: 'center' }}
+                  type="text"
+                  list="exercises-list"
+                  placeholder="Nom de l'exercice"
+                  value={ex.name}
+                  onChange={(e) => handleExerciseNameChange(ex.id, e.target.value)}
+                  style={{ flex: 1 }}
                 />
-                <input
-                  className="input"
-                  type="number"
-                  min="1"
-                  placeholder="10"
-                  value={set.reps}
-                  onChange={(e) => updateSet(ex.id, setIdx, 'reps', e.target.value)}
-                  style={{ padding: '0.45rem 0.6rem', textAlign: 'center' }}
-                />
-                {ex.sets.length > 1 ? (
-                  <button onClick={() => removeSet(ex.id, setIdx)} className="btn-icon btn-icon-danger">
-                    <Trash2 size={12} />
+                {exercises.length > 1 && (
+                  <button onClick={() => removeExercise(ex.id)} className="btn-icon btn-icon-danger">
+                    <Trash2 size={14} />
                   </button>
-                ) : <div style={{ width: '2rem' }} />}
+                )}
               </div>
-            ))}
 
-            <button onClick={() => addSet(ex.id)} className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem', width: '100%' }}>
-              <PlusCircle size={14} /> Ajouter une série
-            </button>
-          </div>
-        ))}
+              {/* Last weight hint */}
+              {lastW && (
+                <div style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', marginBottom: '0.625rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span>⏱</span> Dernier poids connu : <strong>{lastW} kg</strong>
+                </div>
+              )}
+
+              {/* Sets header */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2rem 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                <div />
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Poids (kg)</div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reps</div>
+                <div />
+              </div>
+
+              {/* Sets */}
+              {ex.sets.map((set, setIdx) => (
+                <div key={setIdx} className="set-row">
+                  <div className="set-number">{set.set_number}</div>
+                  <input
+                    className="input"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    placeholder={lastW ?? '0'}
+                    value={set.weight_kg}
+                    onChange={(e) => updateSet(ex.id, setIdx, 'weight_kg', e.target.value)}
+                    style={{ padding: '0.45rem 0.6rem', textAlign: 'center' }}
+                  />
+                  <input
+                    className="input"
+                    type="number"
+                    min="1"
+                    placeholder="10"
+                    value={set.reps}
+                    onChange={(e) => updateSet(ex.id, setIdx, 'reps', e.target.value)}
+                    style={{ padding: '0.45rem 0.6rem', textAlign: 'center' }}
+                  />
+                  {ex.sets.length > 1 ? (
+                    <button onClick={() => removeSet(ex.id, setIdx)} className="btn-icon btn-icon-danger">
+                      <Trash2 size={12} />
+                    </button>
+                  ) : <div style={{ width: '2rem' }} />}
+                </div>
+              ))}
+
+              <button onClick={() => addSet(ex.id)} className="btn btn-ghost btn-sm" style={{ marginTop: '0.5rem', width: '100%' }}>
+                <PlusCircle size={14} /> Ajouter une série
+              </button>
+            </div>
+          )
+        })}
       </div>
 
       <button onClick={addExercise} className="btn btn-ghost btn-full" style={{ marginBottom: '1.5rem' }}>

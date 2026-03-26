@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { startAuthentication } from '@simplewebauthn/browser'
 import {
   Dumbbell, Mail, Lock, User, AlertCircle, Loader2,
-  CheckCircle, ArrowLeft, Eye, EyeOff, Fingerprint,
+  CheckCircle, ArrowLeft, Eye, EyeOff, Fingerprint, Smartphone,
 } from 'lucide-react'
 
 type Mode = 'login' | 'signup' | 'forgot'
@@ -25,6 +25,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<'email-sent' | 'reset-sent' | null>(null)
+  const [showPwaSteps, setShowPwaSteps] = useState(false)
+  const [pwaCopied, setPwaCopied] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -166,6 +168,75 @@ export default function LoginPage() {
               )}
             </p>
           </div>
+          {/* PWA install suggestion — only after signup */}
+          {!isReset && (
+            <div style={{ marginBottom: '1rem' }}>
+              <button
+                onClick={() => setShowPwaSteps(v => !v)}
+                style={{
+                  width: '100%', padding: '0.875rem 1rem',
+                  borderRadius: '0.875rem', border: '1px solid rgba(139,92,246,0.35)',
+                  background: 'var(--accent-violet-glow)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '0.75rem',
+                  fontFamily: 'inherit', color: '#c4b5fd',
+                  textAlign: 'left', transition: 'border-color 0.2s',
+                }}
+              >
+                <Smartphone size={20} style={{ flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>Installer l&apos;application</div>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>Ajoutez SPORTS.SL à votre écran d&apos;accueil</div>
+                </div>
+              </button>
+
+              {showPwaSteps && (
+                <div className="fade-in" style={{ marginTop: '0.75rem', padding: '1rem', borderRadius: '0.875rem', background: 'var(--bg-card)', border: '1px solid var(--border)', textAlign: 'left' }}>
+                  {/* iOS */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                      🍎 Sur iPhone / iPad (Safari)
+                    </div>
+                    {[
+                      '1. Ouvrez cette page dans Safari',
+                      '2. Appuyez sur le bouton Partager (□↑)',
+                      '3. Faites défiler et choisissez "Sur l\'écran d\'accueil"',
+                      '4. Confirmez en tapant "Ajouter"',
+                    ].map(step => (
+                      <div key={step} style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', padding: '0.2rem 0', lineHeight: 1.5 }}>{step}</div>
+                    ))}
+                  </div>
+
+                  {/* Android */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                      🤖 Sur Android (Chrome)
+                    </div>
+                    {[
+                      '1. Ouvrez cette page dans Chrome',
+                      '2. Appuyez sur ⋮ (menu trois points)',
+                      '3. Choisissez "Ajouter à l\'écran d\'accueil"',
+                      '4. Confirmez en tapant "Ajouter"',
+                    ].map(step => (
+                      <div key={step} style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', padding: '0.2rem 0', lineHeight: 1.5 }}>{step}</div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(window.location.origin)
+                      setPwaCopied(true)
+                      setTimeout(() => setPwaCopied(false), 2000)
+                    }}
+                    className="btn btn-ghost btn-sm btn-full"
+                    style={{ marginTop: '0.25rem' }}
+                  >
+                    {pwaCopied ? '✓ Lien copié !' : '📋 Copier le lien de l\'app'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             onClick={() => { setSuccess(null); setMode('login') }}
             className="btn btn-ghost btn-full"

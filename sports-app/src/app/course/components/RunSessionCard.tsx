@@ -5,6 +5,7 @@ import { formatPace, formatDuration } from '@/lib/runUtils'
 import { RUN_TYPE_COLORS, WEATHER_ICONS, SURFACE_ICONS, DIFFICULTY_LABELS } from '@/lib/constants'
 import type { RunType, RunWeather, RunSurface } from '@/lib/constants'
 import { ChevronDown, Heart, Mountain, Footprints, Copy, Trash2, Loader2 } from 'lucide-react'
+import ShareButton from '@/components/ShareButton'
 
 export interface RunSessionRow {
   id: string
@@ -132,6 +133,17 @@ export default function RunSessionCard({ session, onDuplicate, onDelete, deletin
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <ShareButton session={{
+              type: 'run',
+              title: `Course ${s.type} — ${s.distance_km.toFixed(2)} km`,
+              date: s.date,
+              stats: [
+                { label: 'Distance', value: `${s.distance_km.toFixed(2)} km` },
+                { label: 'Durée', value: formatDuration(s.duration_seconds) },
+                ...(avgPace > 0 ? [{ label: 'Allure', value: formatPace(avgPace) }] : []),
+                ...(s.calories ? [{ label: 'Calories', value: `${s.calories} kcal` }] : []),
+              ],
+            }} />
             {onDuplicate && (
               <button onClick={onDuplicate} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
                 <Copy size={14} /> Dupliquer

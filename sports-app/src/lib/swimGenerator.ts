@@ -1,7 +1,7 @@
 export type SwimStyle = 'Endurance' | 'Vitesse' | 'Technique' | 'Mixte'
 export type SwimDistance = 1000 | 1500 | 2500 | 3500
 export type SwimLevel = 'Débutant' | 'Intermédiaire' | 'Avancé'
-export type SwimEquipment = 'palmes' | 'pull-buoy' | 'planche'
+export type SwimEquipment = 'palmes' | 'pull-buoy' | 'planche' | 'plaquette'
 
 export interface SwimBlock {
   label: string

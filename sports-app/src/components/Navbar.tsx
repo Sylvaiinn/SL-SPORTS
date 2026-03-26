@@ -257,11 +257,14 @@ export default function Navbar() {
             <Link
               key={href}
               href={href}
+              prefetch={true}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 flex: 1, gap: '0.25rem', padding: '0.5rem 0',
                 color: active ? activeColor : 'rgba(255,255,255,0.4)',
                 textDecoration: 'none', transition: 'color 0.15s',
+                WebkitTapHighlightColor: 'transparent',
+                touchAction: 'manipulation',
               }}
             >
               <Icon size={24} strokeWidth={active ? 2.5 : 1.5} />

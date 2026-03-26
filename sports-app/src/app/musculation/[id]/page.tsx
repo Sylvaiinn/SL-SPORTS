@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Calendar, Dumbbell, Clock, Eye, EyeOff, Weight } from 'lucide-react'
 import WorkoutActions from './WorkoutActions'
+import ShareButton from '@/components/ShareButton'
 
 interface SetRow { id: string; set_number: number; weight_kg: number | null; reps: number | null; notes: string | null }
 interface ExRow { id: string; name: string; order: number; muscle_groups: string[]; sets: SetRow[] }
@@ -44,7 +45,20 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
               </p>
             </div>
           </div>
-          <WorkoutActions workoutId={workout.id} />
+          <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
+            <ShareButton session={{
+              type: 'muscu',
+              title: workout.name,
+              date: workout.date,
+              stats: [
+                { label: 'Exercices', value: String(exercises.length) },
+                { label: 'Séries', value: String(exercises.reduce((a: number, e: ExRow) => a + (Array.isArray(e.sets) ? e.sets.length : 0), 0)) },
+                ...(workout.duration_minutes ? [{ label: 'Durée', value: `${workout.duration_minutes} min` }] : []),
+                ...(workout.volume_total_kg > 0 ? [{ label: 'Volume', value: `${Math.round(workout.volume_total_kg)} kg` }] : []),
+              ],
+            }} />
+            <WorkoutActions workoutId={workout.id} />
+          </div>
         </div>
       </div>
 
