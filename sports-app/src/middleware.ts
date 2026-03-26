@@ -35,7 +35,12 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  if (pathname === '/' || pathname === '/login' || pathname === '/auth/reset-password' || pathname === '/auth/callback') {
+  // Landing page — toujours accessible, auth gérée dans page.tsx
+  if (pathname === '/') {
+    return supabaseResponse
+  }
+
+  if (pathname === '/login' || pathname === '/auth/reset-password' || pathname === '/auth/callback') {
     if (user) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
