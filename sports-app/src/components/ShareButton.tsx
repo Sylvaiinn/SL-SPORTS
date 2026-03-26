@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Share2, X, Download, Copy, Check, Image as ImageIcon } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Share2, X, Download, Copy, Check, Loader2 } from 'lucide-react'
 
 export interface ShareSessionData {
   type: 'muscu' | 'swim' | 'run'
@@ -13,384 +13,257 @@ export interface ShareSessionData {
 }
 
 const TYPE_CONFIG = {
-  muscu: { emoji: '🏋️', label: 'Musculation', color: '#8b5cf6', glow: 'rgba(139,92,246,0.35)', gradient: ['#1a0e2e', '#0f0f1a'] },
-  swim:  { emoji: '🏊', label: 'Natation',    color: '#3b82f6', glow: 'rgba(59,130,246,0.35)',  gradient: ['#0e1a2e', '#0f0f1a'] },
-  run:   { emoji: '🏃', label: 'Course',      color: '#10b981', glow: 'rgba(16,185,129,0.35)',  gradient: ['#0e2820', '#0f0f1a'] },
+  muscu: { emoji: '🏋️', label: 'Musculation', color: '#8b5cf6', bg: '#1a0e2e' },
+  swim:  { emoji: '🏊', label: 'Natation',    color: '#3b82f6', bg: '#0e1a2e' },
+  run:   { emoji: '🏃', label: 'Course',      color: '#10b981', bg: '#0e2820' },
 }
 
-// ─── Canvas image generator ───────────────────────────────────────────────────
-async function generateImage(session: ShareSessionData): Promise<Blob | null> {
+function buildShareText(session: ShareSessionData): string {
   const cfg = TYPE_CONFIG[session.type]
-  // Logical draw space stays 1080×1080; canvas renders at 540×540 (75% fewer pixels)
-  const W = 1080
-  const H = 1080
-  const CANVAS_SIZE = 540
+  const date = new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const lines = [
+    `${cfg.emoji} ${session.title}`,
+    date,
+    '',
+    ...session.stats.filter(s => s.value && s.value !== '-').map(s => `${s.label} : ${s.value}`),
+  ]
+  if (session.exercises?.length) {
+    lines.push('')
+    session.exercises.slice(0, 5).forEach(ex => lines.push(`• ${ex.name} — ${ex.topSet}`))
+  }
+  lines.push('', '🏆 SPORTS.SL')
+  return lines.join('\n')
+}
 
+// ─── Canvas pour téléchargement uniquement ───────────────────────────────────
+async function generateDownloadImage(session: ShareSessionData): Promise<Blob | null> {
+  const cfg = TYPE_CONFIG[session.type]
+  const S = 540
   const canvas = document.createElement('canvas')
-  canvas.width = CANVAS_SIZE
-  canvas.height = CANVAS_SIZE
+  canvas.width = S; canvas.height = S
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  // Scale everything down uniformly — all existing draw code unchanged
-  ctx.scale(CANVAS_SIZE / W, CANVAS_SIZE / H)
+  // Background
+  ctx.fillStyle = cfg.bg
+  ctx.fillRect(0, 0, S, S)
 
-  // ── Background gradient ────────────────────────────────────────────────────
-  const bgGrad = ctx.createLinearGradient(0, 0, W, H)
-  bgGrad.addColorStop(0, cfg.gradient[0])
-  bgGrad.addColorStop(1, cfg.gradient[1])
-  ctx.fillStyle = bgGrad
-  ctx.fillRect(0, 0, W, H)
-
-  // Subtle radial glow in center-top
-  const radial = ctx.createRadialGradient(W / 2, 200, 0, W / 2, 200, 600)
-  radial.addColorStop(0, cfg.glow)
-  radial.addColorStop(1, 'transparent')
-  ctx.fillStyle = radial
-  ctx.fillRect(0, 0, W, H)
-
-  // ── Top accent bar ─────────────────────────────────────────────────────────
+  // Top bar
   ctx.fillStyle = cfg.color
-  roundRect(ctx, 0, 0, W, 12, 0)
-  ctx.fill()
+  ctx.fillRect(0, 0, S, 6)
 
-  // ── Sport pill (top-right) ─────────────────────────────────────────────────
-  ctx.font = 'bold 28px system-ui, -apple-system, sans-serif'
-  const pillText = cfg.label.toUpperCase()
-  const pillW = ctx.measureText(pillText).width + 48
-  const pillX = W - pillW - 60
-  const pillY = 60
+  const P = 28  // padding
+  let y = 24
 
-  ctx.fillStyle = `${cfg.color}33`
-  roundRect(ctx, pillX, pillY - 22, pillW, 44, 22)
-  ctx.fill()
-
-  ctx.strokeStyle = cfg.color
-  ctx.lineWidth = 2
-  roundRect(ctx, pillX, pillY - 22, pillW, 44, 22)
-  ctx.stroke()
-
-  ctx.fillStyle = cfg.color
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(pillText, pillX + pillW / 2, pillY)
-
-  // ── Big emoji ──────────────────────────────────────────────────────────────
-  ctx.font = '160px serif'
-  ctx.textAlign = 'left'
+  // Emoji + title
+  ctx.font = '52px serif'
   ctx.textBaseline = 'top'
-  ctx.fillText(cfg.emoji, 64, 96)
+  ctx.textAlign = 'left'
+  ctx.fillText(cfg.emoji, P, y)
+  y += 60
 
-  // ── Title ──────────────────────────────────────────────────────────────────
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 72px system-ui, -apple-system, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
-  // Word-wrap title if > 18 chars
-  const titleLines = wrapText(ctx, session.title, W - 128, 72)
-  let titleY = 280
-  for (const line of titleLines.slice(0, 2)) {
-    ctx.fillText(line, 64, titleY)
-    titleY += 84
-  }
+  ctx.font = 'bold 28px system-ui, sans-serif'
+  ctx.fillText(session.title.slice(0, 30) + (session.title.length > 30 ? '…' : ''), P, y)
+  y += 36
 
-  // ── Date ──────────────────────────────────────────────────────────────────
-  const dateLabel = new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const dateLabelCap = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'
-  ctx.font = '36px system-ui, -apple-system, sans-serif'
-  ctx.fillText(dateLabelCap, 64, titleY + 16)
+  // Date
+  const date = new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'
+  ctx.font = '16px system-ui, sans-serif'
+  ctx.fillText(date.charAt(0).toUpperCase() + date.slice(1), P, y)
+  y += 30
 
-  // ── Stats cards or exercise list ────────────────────────────────────────────
-  if (session.type === 'muscu' && session.exercises && session.exercises.length > 0) {
-    // ── Compact stats line ─────────────────────────────────────────────────
-    const compactY = titleY + 80
-    const compactParts = session.stats.filter(s => s.value !== '-').map(s => `${s.label} : ${s.value}`)
-    ctx.fillStyle = 'rgba(255,255,255,0.45)'
-    ctx.font = '34px system-ui, -apple-system, sans-serif'
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(compactParts.join('  ·  '), 64, compactY)
+  // Divider
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+  ctx.lineWidth = 1
+  ctx.beginPath(); ctx.moveTo(P, y); ctx.lineTo(S - P, y); ctx.stroke()
+  y += 18
 
-    // ── Exercise rows ──────────────────────────────────────────────────────
-    const exercises = session.exercises.slice(0, 5)
-    const rowH = 64
-    const rowGap = 12
-    const exStartY = compactY + 58
+  if (session.exercises?.length) {
+    // Stats line
+    const parts = session.stats.filter(s => s.value && s.value !== '-').slice(0, 3).map(s => `${s.label}: ${s.value}`)
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.font = '14px system-ui, sans-serif'
+    ctx.fillText(parts.join('  ·  '), P, y)
+    y += 26
 
-    exercises.forEach((ex, i) => {
-      const ry = exStartY + i * (rowH + rowGap)
-      const rx = 64
-      const rw = W - 128
-
-      // Row background
-      ctx.fillStyle = 'rgba(255,255,255,0.06)'
-      roundRect(ctx, rx, ry, rw, rowH, 14)
-      ctx.fill()
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)'
-      ctx.lineWidth = 1
-      roundRect(ctx, rx, ry, rw, rowH, 14)
-      ctx.stroke()
-
-      // Accent left bar
+    // Exercises
+    session.exercises.slice(0, 5).forEach(ex => {
       ctx.fillStyle = cfg.color
-      roundRect(ctx, rx, ry, 5, rowH, 3)
-      ctx.fill()
+      ctx.fillRect(P, y + 4, 3, 20)
 
-      // Exercise name
       ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif'
+      ctx.font = 'bold 16px system-ui, sans-serif'
       ctx.textAlign = 'left'
-      ctx.textBaseline = 'middle'
-      const maxNameW = rw - 260
+      const maxW = S - P * 2 - 120
       let name = ex.name
-      while (ctx.measureText(name).width > maxNameW && name.length > 3) name = name.slice(0, -1)
+      while (ctx.measureText(name).width > maxW && name.length > 3) name = name.slice(0, -1)
       if (name !== ex.name) name += '…'
-      ctx.fillText(name, rx + 24, ry + rowH / 2)
+      ctx.fillText(name, P + 12, y + 5)
 
-      // Top set (right)
       ctx.fillStyle = cfg.color
-      ctx.font = 'bold 34px system-ui, -apple-system, sans-serif'
+      ctx.font = 'bold 16px system-ui, sans-serif'
       ctx.textAlign = 'right'
-      ctx.fillText(ex.topSet, rx + rw - 20, ry + rowH / 2)
+      ctx.fillText(ex.topSet, S - P, y + 5)
+
+      ctx.textAlign = 'left'
+      y += 30
     })
-
-    if (session.exercises.length > 5) {
-      const moreY = exStartY + 5 * (rowH + rowGap) + 10
-      ctx.fillStyle = 'rgba(255,255,255,0.3)'
-      ctx.font = '28px system-ui, -apple-system, sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
-      ctx.fillText(`+ ${session.exercises.length - 5} exercice${session.exercises.length - 5 > 1 ? 's' : ''}`, W / 2, moreY)
-    }
   } else {
-    // ── Default stat cards ───────────────────────────────────────────────
-    const stats = session.stats.slice(0, 6)
+    // Stats grid
+    const stats = session.stats.filter(s => s.value && s.value !== '-').slice(0, 6)
     const cols = Math.min(stats.length, 3)
-    const cardW = (W - 128 - (cols - 1) * 24) / cols
-    const cardH = 160
-    const cardStartY = titleY + 100
-    const cardStartX = 64
-
+    const cellW = (S - P * 2 - (cols - 1) * 10) / cols
     stats.forEach((stat, i) => {
       const col = i % cols
       const row = Math.floor(i / cols)
-      const x = cardStartX + col * (cardW + 24)
-      const y = cardStartY + row * (cardH + 20)
+      const x = P + col * (cellW + 10)
+      const cy = y + row * 70
 
-      ctx.fillStyle = 'rgba(255,255,255,0.07)'
-      roundRect(ctx, x, y, cardW, cardH, 20)
-      ctx.fill()
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-      ctx.lineWidth = 1.5
-      roundRect(ctx, x, y, cardW, cardH, 20)
-      ctx.stroke()
+      ctx.fillStyle = 'rgba(255,255,255,0.06)'
+      ctx.beginPath(); ctx.roundRect(x, cy, cellW, 60, 8); ctx.fill()
 
       ctx.fillStyle = cfg.color
-      ctx.font = `bold ${stat.value.length > 7 ? 44 : 52}px system-ui, -apple-system, sans-serif`
+      ctx.font = `bold ${stat.value.length > 6 ? 18 : 22}px system-ui, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(stat.value, x + cardW / 2, y + cardH / 2 - 16)
+      ctx.fillText(stat.value, x + cellW / 2, cy + 22)
 
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'
-      ctx.font = '28px system-ui, -apple-system, sans-serif'
-      ctx.fillText(stat.label.toUpperCase(), x + cardW / 2, y + cardH / 2 + 32)
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'
+      ctx.font = '12px system-ui, sans-serif'
+      ctx.fillText(stat.label, x + cellW / 2, cy + 44)
     })
+    y += Math.ceil(stats.length / cols) * 70
   }
 
-  // ── Separator ─────────────────────────────────────────────────────────────
-  const sepY = H - 160
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)'
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(64, sepY)
-  ctx.lineTo(W - 64, sepY)
-  ctx.stroke()
-
-  // ── Branding ──────────────────────────────────────────────────────────────
-  // Logo circle
-  const logoR = 40
-  const logoX = 64 + logoR
-  const logoY = sepY + 80
-
-  const logoGrad = ctx.createLinearGradient(logoX - logoR, logoY - logoR, logoX + logoR, logoY + logoR)
-  logoGrad.addColorStop(0, '#3b82f6')
-  logoGrad.addColorStop(1, '#8b5cf6')
-  ctx.fillStyle = logoGrad
-  ctx.beginPath()
-  ctx.arc(logoX, logoY, logoR, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 32px system-ui, -apple-system, sans-serif'
+  // Branding
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'
+  ctx.font = 'bold 14px system-ui, sans-serif'
   ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('SL', logoX, logoY)
+  ctx.fillText('SPORTS.SL', S / 2, S - 14)
 
-  // App name
-  ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 42px system-ui, -apple-system, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'middle'
-  ctx.fillText('SPORTS.SL', logoX + logoR + 24, logoY)
-
-  // Username (right)
-  if (session.username) {
-    ctx.fillStyle = 'rgba(255,255,255,0.45)'
-    ctx.font = '34px system-ui, -apple-system, sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`@${session.username}`, W - 64, logoY)
-  }
-
-  // JPEG encode : 5-10× plus rapide que PNG, taille 3-4× plus petite
   return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/jpeg', 0.88))
 }
 
-// ─── Canvas helpers ────────────────────────────────────────────────────────────
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.lineTo(x + w - r, y)
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
-  ctx.lineTo(x + w, y + h - r)
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
-  ctx.lineTo(x + r, y + h)
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
-  ctx.lineTo(x, y + r)
-  ctx.quadraticCurveTo(x, y, x + r, y)
-  ctx.closePath()
-}
+// ─── HTML Card Preview ────────────────────────────────────────────────────────
+function CardPreview({ session }: { session: ShareSessionData }) {
+  const cfg = TYPE_CONFIG[session.type]
+  const date = new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const stats = session.stats.filter(s => s.value && s.value !== '-')
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number, fontSize: number): string[] {
-  const words = text.split(' ')
-  const lines: string[] = []
-  let line = ''
-  ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word
-    if (ctx.measureText(test).width > maxW && line) {
-      lines.push(line)
-      line = word
-    } else {
-      line = test
-    }
-  }
-  if (line) lines.push(line)
-  return lines
+  return (
+    <div style={{
+      borderRadius: '0.875rem', overflow: 'hidden',
+      background: cfg.bg,
+      border: `1px solid ${cfg.color}44`,
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+    }}>
+      {/* Accent bar */}
+      <div style={{ height: '4px', background: cfg.color }} />
+
+      <div style={{ padding: '1rem' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.625rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <span style={{ fontSize: '1.25rem' }}>{cfg.emoji}</span>
+              <span style={{ fontWeight: 800, fontSize: '0.9375rem', color: '#fff' }}>{session.title}</span>
+            </div>
+            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)' }}>
+              {date.charAt(0).toUpperCase() + date.slice(1)}
+            </span>
+          </div>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: cfg.color, background: `${cfg.color}22`, border: `1px solid ${cfg.color}55`, padding: '0.2rem 0.5rem', borderRadius: '99px' }}>
+            {cfg.label.toUpperCase()}
+          </span>
+        </div>
+
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', marginBottom: '0.625rem' }} />
+
+        {/* Exercises or stats */}
+        {session.exercises?.length ? (
+          <>
+            {stats.length > 0 && (
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.5rem' }}>
+                {stats.slice(0, 3).map(s => `${s.label}: ${s.value}`).join('  ·  ')}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              {session.exercises.slice(0, 4).map((ex, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0.5rem', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.05)' }}>
+                  <div style={{ width: '3px', height: '1rem', borderRadius: '2px', background: cfg.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: '0.75rem', color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: cfg.color, flexShrink: 0 }}>{ex.topSet}</span>
+                </div>
+              ))}
+              {(session.exercises?.length ?? 0) > 4 && (
+                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+                  +{(session.exercises?.length ?? 0) - 4} exercice{(session.exercises?.length ?? 0) - 4 > 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(stats.length, 3)}, 1fr)`, gap: '0.375rem' }}>
+            {stats.slice(0, 6).map(s => (
+              <div key={s.label} style={{ padding: '0.5rem', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.06)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 800, color: cfg.color }}>{s.value}</div>
+                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Branding */}
+        <div style={{ marginTop: '0.625rem', textAlign: 'center', fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', fontWeight: 700, letterSpacing: '0.08em' }}>
+          SPORTS.SL
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ShareButton({ session }: { session: ShareSessionData }) {
   const [open, setOpen] = useState(false)
-  const [generating, setGenerating] = useState(false)
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const blobRef = useRef<Blob | null>(null)
-  const generatingRef = useRef(false)
+  const [downloading, setDownloading] = useState(false)
 
-  // Pre-generate image in background after first render
-  useEffect(() => {
-    if (generatingRef.current || blobRef.current) return
-    generatingRef.current = true
-
-    const run = async () => {
-      const blob = await generateImage(session)
-      if (blob) {
-        blobRef.current = blob
-        setImageUrl(URL.createObjectURL(blob))
-      }
-      generatingRef.current = false
-    }
-
-    if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(() => run(), { timeout: 2000 })
-    } else {
-      const t = setTimeout(run, 300)
-      return () => clearTimeout(t)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  async function openModal() {
-    setOpen(true)
-    if (imageUrl) return  // déjà prête
-    if (generatingRef.current) {
-      // Background en cours : montrer le spinner jusqu'à ce que imageUrl soit set
-      setGenerating(true)
-      const wait = () => new Promise<void>(res => {
-        const check = setInterval(() => { if (!generatingRef.current) { clearInterval(check); res() } }, 80)
-      })
-      await wait()
-      setGenerating(false)
-      return
-    }
-    // Pas encore démarré (cas rare) : générer maintenant
-    setGenerating(true)
-    const blob = await generateImage(session)
-    if (blob) {
-      blobRef.current = blob
-      setImageUrl(URL.createObjectURL(blob))
-    }
-    setGenerating(false)
-  }
-
-  function closeModal() {
-    setOpen(false)
-  }
+  const cfg = TYPE_CONFIG[session.type]
+  const shareText = buildShareText(session)
 
   async function handleNativeShare() {
-    const blob = blobRef.current
-    if (!blob) return
-    const file = new File([blob], 'seance-sports-sl.jpg', { type: 'image/jpeg' })
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: session.title })
-        return
-      } catch { /* annulé */ }
-    }
-    // Fallback: partage texte
-    const text = [
-      `${TYPE_CONFIG[session.type].emoji} ${session.title}`,
-      new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-      '',
-      ...session.stats.map(s => `• ${s.label} : ${s.value}`),
-      '',
-      '🏆 SPORTS.SL',
-    ].join('\n')
+    if (typeof navigator === 'undefined' || !('share' in navigator)) return
     try {
-      await navigator.share({ title: session.title, text })
+      await navigator.share({ title: session.title, text: shareText })
     } catch { /* annulé */ }
   }
 
-  function handleDownload() {
-    if (!imageUrl) return
+  async function handleDownload() {
+    setDownloading(true)
+    const blob = await generateDownloadImage(session)
+    setDownloading(false)
+    if (!blob) return
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = imageUrl
+    a.href = url
     a.download = `seance-${session.type}-${session.date}.jpg`
     a.click()
+    URL.revokeObjectURL(url)
   }
 
   async function handleCopyText() {
-    const text = [
-      `${TYPE_CONFIG[session.type].emoji} ${session.title}`,
-      new Date(session.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-      '',
-      ...session.stats.map(s => `• ${s.label} : ${s.value}`),
-      '',
-      '🏆 SPORTS.SL',
-    ].join('\n')
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(shareText)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const cfg = TYPE_CONFIG[session.type]
-
   return (
     <>
       <button
-        onClick={openModal}
+        onClick={() => setOpen(true)}
         className="btn btn-ghost btn-sm"
         style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', padding: '0.35rem 0.6rem' }}
         title="Partager la séance"
@@ -401,11 +274,8 @@ export default function ShareButton({ session }: { session: ShareSessionData }) 
 
       {open && (
         <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          }}
-          onClick={e => { if (e.target === e.currentTarget) closeModal() }}
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setOpen(false) }}
         >
           <div
             className="fade-in"
@@ -417,71 +287,45 @@ export default function ShareButton({ session }: { session: ShareSessionData }) 
               paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)',
             }}
           >
-            {/* Drag handle */}
-            <div style={{ padding: '0.875rem 1.25rem 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '0.875rem 1.25rem 0' }}>
               <div style={{ width: '2.5rem', height: '4px', borderRadius: '2px', background: 'var(--border)', margin: '0 auto' }} />
             </div>
-            <div style={{ padding: '0 1.25rem 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>Partager la séance</span>
-              <button onClick={closeModal} className="btn-icon" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+              <button onClick={() => setOpen(false)} className="btn-icon" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
                 <X size={16} />
               </button>
             </div>
 
-            {/* Image preview */}
+            {/* Prévisualisation HTML — instantanée */}
             <div style={{ padding: '0 1.25rem', marginBottom: '1.25rem' }}>
-              <div style={{
-                borderRadius: '1rem', overflow: 'hidden',
-                border: `1px solid ${cfg.glow}`,
-                background: cfg.gradient[0],
-                minHeight: '220px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative',
-              }}>
-                {generating && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', padding: '2rem' }}>
-                    <div style={{ fontSize: '2.5rem' }}>{cfg.emoji}</div>
-                    <span style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)' }}>Génération de la carte…</span>
-                  </div>
-                )}
-                {imageUrl && !generating && (
-                  <img
-                    src={imageUrl}
-                    alt="Carte de séance"
-                    style={{ width: '100%', height: 'auto', display: 'block' }}
-                  />
-                )}
-              </div>
+              <CardPreview session={session} />
             </div>
 
-            {/* Action buttons */}
+            {/* Boutons */}
             <div style={{ padding: '0 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-              {/* Native share (image) */}
               {typeof navigator !== 'undefined' && 'share' in navigator && (
                 <button
                   onClick={handleNativeShare}
-                  disabled={generating || !imageUrl}
                   className="btn btn-primary btn-full"
                   style={{ background: cfg.color, borderColor: cfg.color }}
                 >
                   <Share2 size={16} />
-                  Partager l&apos;image
+                  Partager
                 </button>
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.625rem' }}>
-                {/* Download */}
                 <button
                   onClick={handleDownload}
-                  disabled={generating || !imageUrl}
+                  disabled={downloading}
                   className="btn btn-ghost"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                 >
-                  <Download size={15} />
-                  Télécharger
+                  {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                  {downloading ? 'Génération…' : 'Image'}
                 </button>
 
-                {/* Copy text */}
                 <button
                   onClick={handleCopyText}
                   className="btn btn-ghost"
