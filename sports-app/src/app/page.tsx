@@ -1,7 +1,19 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { Dumbbell, Waves, Footprints, Trophy, TrendingUp, Users, ChevronRight, Check, Zap, Star } from 'lucide-react'
 
 export default function Home() {
+  const router = useRouter()
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace('/dashboard')
+    })
+  }, [router])
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif', overflowX: 'hidden' }}>
 
