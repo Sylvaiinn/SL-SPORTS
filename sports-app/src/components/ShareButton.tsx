@@ -21,10 +21,10 @@ const TYPE_CONFIG = {
 // ─── Canvas image generator ───────────────────────────────────────────────────
 async function generateImage(session: ShareSessionData): Promise<Blob | null> {
   const cfg = TYPE_CONFIG[session.type]
-  // Logical draw space stays 1080×1080; canvas renders at 720×720 (44% fewer pixels)
+  // Logical draw space stays 1080×1080; canvas renders at 540×540 (75% fewer pixels)
   const W = 1080
   const H = 1080
-  const CANVAS_SIZE = 720
+  const CANVAS_SIZE = 540
 
   const canvas = document.createElement('canvas')
   canvas.width = CANVAS_SIZE
@@ -243,7 +243,8 @@ async function generateImage(session: ShareSessionData): Promise<Blob | null> {
     ctx.fillText(`@${session.username}`, W - 64, logoY)
   }
 
-  return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png', 0.85))
+  // JPEG encode : 5-10× plus rapide que PNG, taille 3-4× plus petite
+  return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/jpeg', 0.88))
 }
 
 // ─── Canvas helpers ────────────────────────────────────────────────────────────
@@ -313,16 +314,25 @@ export default function ShareButton({ session }: { session: ShareSessionData }) 
 
   async function openModal() {
     setOpen(true)
-    // If not ready yet, generate now (fallback)
-    if (!imageUrl && !generatingRef.current) {
+    if (imageUrl) return  // déjà prête
+    if (generatingRef.current) {
+      // Background en cours : montrer le spinner jusqu'à ce que imageUrl soit set
       setGenerating(true)
-      const blob = await generateImage(session)
-      if (blob) {
-        blobRef.current = blob
-        setImageUrl(URL.createObjectURL(blob))
-      }
+      const wait = () => new Promise<void>(res => {
+        const check = setInterval(() => { if (!generatingRef.current) { clearInterval(check); res() } }, 80)
+      })
+      await wait()
       setGenerating(false)
+      return
     }
+    // Pas encore démarré (cas rare) : générer maintenant
+    setGenerating(true)
+    const blob = await generateImage(session)
+    if (blob) {
+      blobRef.current = blob
+      setImageUrl(URL.createObjectURL(blob))
+    }
+    setGenerating(false)
   }
 
   function closeModal() {
@@ -332,7 +342,7 @@ export default function ShareButton({ session }: { session: ShareSessionData }) 
   async function handleNativeShare() {
     const blob = blobRef.current
     if (!blob) return
-    const file = new File([blob], 'seance-sports-sl.png', { type: 'image/png' })
+    const file = new File([blob], 'seance-sports-sl.jpg', { type: 'image/jpeg' })
     if (navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: session.title })
@@ -357,7 +367,7 @@ export default function ShareButton({ session }: { session: ShareSessionData }) 
     if (!imageUrl) return
     const a = document.createElement('a')
     a.href = imageUrl
-    a.download = `seance-${session.type}-${session.date}.png`
+    a.download = `seance-${session.type}-${session.date}.jpg`
     a.click()
   }
 
