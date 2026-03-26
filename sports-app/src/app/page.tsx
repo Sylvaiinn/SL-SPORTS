@@ -6,9 +6,11 @@ import Link from 'next/link'
 import { Dumbbell, Waves, Footprints, Trophy, TrendingUp, Users, ChevronRight, Check, Zap } from 'lucide-react'
 
 export default async function LandingPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect('/dashboard')
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) redirect('/dashboard')
+  } catch { /* affiche la landing page si auth échoue */ }
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f1f5f9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
 
