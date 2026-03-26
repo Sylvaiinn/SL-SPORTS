@@ -38,14 +38,14 @@ export default function CguPage() {
         <li style={S.li}>Un fil d&apos;actualité social (partage de séances entre utilisateurs)</li>
         <li style={S.li}>Un profil public optionnel</li>
       </ul>
-      <p style={S.p}>Le service est édité par <span style={S.placeholder}>PRÉNOM NOM</span> en tant que micro-entrepreneur. Il n&apos;est <strong style={{ color: '#f87171' }}>pas un service médical</strong> et ne constitue en aucun cas un suivi médical, un diagnostic ou un conseil médical.</p>
+      <p style={S.p}>Le service est édité par Sylvain LECLERC — SL-INFORMATION en tant que micro-entrepreneur. Il n&apos;est <strong style={{ color: '#f87171' }}>pas un service médical</strong> et ne constitue en aucun cas un suivi médical, un diagnostic ou un conseil médical.</p>
 
       <h2 style={S.h2}>2. Accès au service</h2>
       <h3 style={{ ...S.p, fontWeight: 700, color: '#cbd5e1', margin: '1rem 0 0.5rem' }}>2.1 Offre gratuite</h3>
       <p style={S.p}>SPORTS.SL propose un accès gratuit permanent incluant les fonctionnalités de base (dashboard, 3 sports, 50 séances par sport, 5 trophées, fil d&apos;actualité, profil public).</p>
       <h3 style={{ ...S.p, fontWeight: 700, color: '#cbd5e1', margin: '1rem 0 0.5rem' }}>2.2 Offre Premium</h3>
       <p style={S.p}>Des fonctionnalités avancées sont disponibles via un abonnement payant (historique illimité, statistiques détaillées, plans d&apos;entraînement, export de données). Les tarifs sont précisés sur la page <Link href="/upgrade" style={{ color: '#60a5fa' }}>/upgrade</Link>. Le paiement est traité par Stripe Inc. et soumis à ses propres conditions.</p>
-      <p style={S.p}>Conformément à l&apos;article L.221-18 du Code de la consommation, vous bénéficiez d&apos;un <strong style={{ color: '#e2e8f0' }}>droit de rétractation de 14 jours</strong> à compter de la souscription. Pour l&apos;exercer : <span style={S.placeholder}>contact@sports.sl-information.fr</span></p>
+      <p style={S.p}>Conformément à l&apos;article L.221-18 du Code de la consommation, vous bénéficiez d&apos;un <strong style={{ color: '#e2e8f0' }}>droit de rétractation de 14 jours</strong> à compter de la souscription. Pour l&apos;exercer : s.leclerc789@gmail.com</p>
 
       <h2 style={S.h2}>3. Création et sécurité du compte</h2>
       <ul style={S.ul}>
@@ -53,7 +53,7 @@ export default function CguPage() {
         <li style={S.li}>Vous êtes responsable de la confidentialité de vos identifiants.</li>
         <li style={S.li}>Vous vous engagez à fournir des informations exactes lors de l&apos;inscription.</li>
         <li style={S.li}>Un seul compte par utilisateur est autorisé.</li>
-        <li style={S.li}>En cas de compromission de votre compte, vous devez nous en informer immédiatement à <span style={S.placeholder}>contact@sports.sl-information.fr</span></li>
+        <li style={S.li}>En cas de compromission de votre compte, vous devez nous en informer immédiatement à s.leclerc789@gmail.com</li>
       </ul>
 
       <h2 style={S.h2}>4. Contenu utilisateur et règles communautaires</h2>
@@ -67,7 +67,7 @@ export default function CguPage() {
       <p style={S.p}>SPORTS.SL se réserve le droit de supprimer tout contenu non conforme et de suspendre les comptes en infraction, sans préavis.</p>
 
       <h2 style={S.h2}>5. Propriété intellectuelle</h2>
-      <p style={S.p}>Le code source, le design, les textes et les algorithmes de SPORTS.SL sont la propriété de <span style={S.placeholder}>PRÉNOM NOM</span>. Les données sportives saisies par l&apos;utilisateur restent sa propriété exclusive. SPORTS.SL ne revendique aucun droit sur vos données personnelles.</p>
+      <p style={S.p}>Le code source, le design, les textes et les algorithmes de SPORTS.SL sont la propriété de Sylvain LECLERC — SL-INFORMATION. Les données sportives saisies par l&apos;utilisateur restent sa propriété exclusive. SPORTS.SL ne revendique aucun droit sur vos données personnelles.</p>
 
       <h2 style={S.h2}>6. Limitation de responsabilité</h2>
       <div style={S.box('#ef4444')}>
@@ -92,11 +92,11 @@ export default function CguPage() {
       <p style={S.p}>SPORTS.SL se réserve le droit de modifier les présentes CGU. Toute modification substantielle sera notifiée par email avec un préavis de <strong style={{ color: '#e2e8f0' }}>30 jours</strong>. La poursuite de l&apos;utilisation du service après ce délai vaut acceptation des nouvelles conditions.</p>
 
       <h2 style={S.h2}>9. Droit applicable et litiges</h2>
-      <p style={S.p}>Les présentes CGU sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité. À défaut, les tribunaux du ressort de <span style={S.placeholder}>VOTRE VILLE</span> seront compétents.</p>
-      <p style={S.p}>Médiation : tout consommateur peut recourir gratuitement à un médiateur de la consommation. <span style={S.placeholder}>Coordonnées du médiateur à compléter</span>.</p>
+      <p style={S.p}>Les présentes CGU sont soumises au droit français. En cas de litige, une solution amiable sera recherchée en priorité. À défaut, les tribunaux du ressort de Strasbourg seront compétents.</p>
+      <p style={S.p}>Médiation : tout consommateur peut recourir gratuitement à un médiateur de la consommation. Coordonnées du médiateur à compléter après immatriculation.</p>
 
       <h2 style={S.h2}>10. Contact</h2>
-      <p style={S.p}>Pour toute question relative aux présentes CGU : <span style={S.placeholder}>contact@sports.sl-information.fr</span></p>
+      <p style={S.p}>Pour toute question relative aux présentes CGU : s.leclerc789@gmail.com</p>
       <p style={S.p}>Voir également notre <Link href="/legal/confidentialite" style={{ color: '#60a5fa' }}>Politique de confidentialité</Link> et nos <Link href="/legal/mentions-legales" style={{ color: '#60a5fa' }}>Mentions légales</Link>.</p>
     </>
   )

@@ -42,6 +42,14 @@ export default function RootLayout({
         <NavbarWrapper />
         <main className="page-content">
           {children}
+          <footer style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <a href="/legal/mentions-legales" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Mentions légales</a>
+              <a href="/legal/confidentialite" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Confidentialité</a>
+              <a href="/legal/cgu" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>CGU</a>
+            </div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.4, margin: 0 }}>© 2025 SPORTS.SL</p>
+          </footer>
         </main>
       </body>
     </html>

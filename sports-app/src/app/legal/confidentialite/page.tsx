@@ -37,9 +37,9 @@ export default function ConfidentialitePage() {
       <h2 style={S.h2}>1. Responsable du traitement</h2>
       <table style={S.table}>
         <tbody>
-          <tr><td style={S.tdLabel}>Identité</td><td style={S.td}><span style={S.placeholder}>PRÉNOM NOM</span> — SPORTS.SL</td></tr>
-          <tr><td style={S.tdLabel}>SIRET</td><td style={S.td}><span style={S.placeholder}>XXX XXX XXX XXXXX</span></td></tr>
-          <tr><td style={S.tdLabel}>Contact DPO / Données</td><td style={S.td}><span style={S.placeholder}>contact@sports.sl-information.fr</span></td></tr>
+          <tr><td style={S.tdLabel}>Identité</td><td style={S.td}>Sylvain LECLERC — SL-INFORMATION</td></tr>
+          <tr><td style={S.tdLabel}>SIRET</td><td style={S.td}>En cours d&apos;immatriculation</td></tr>
+          <tr><td style={S.tdLabel}>Contact DPO / Données</td><td style={S.td}>s.leclerc789@gmail.com</td></tr>
         </tbody>
       </table>
 
@@ -119,7 +119,7 @@ export default function ConfidentialitePage() {
         <li style={S.li}><strong style={{ color: '#cbd5e1' }}>Droit d&apos;opposition (Art. 21)</strong> — Vous opposer au traitement basé sur l&apos;intérêt légitime</li>
         <li style={S.li}><strong style={{ color: '#cbd5e1' }}>Droit de retrait du consentement</strong> — Retirer à tout moment le consentement donné pour les données de santé</li>
       </ul>
-      <p style={S.p}>Pour exercer ces droits : <span style={S.placeholder}>contact@sports.sl-information.fr</span> — Réponse sous 30 jours.</p>
+      <p style={S.p}>Pour exercer ces droits : s.leclerc789@gmail.com — Réponse sous 30 jours.</p>
       <p style={S.p}>En cas de réclamation non résolue, vous pouvez saisir la <strong style={{ color: '#cbd5e1' }}>CNIL</strong> : cnil.fr/fr/plaintes</p>
 
       {/* 6. Cookies */}
