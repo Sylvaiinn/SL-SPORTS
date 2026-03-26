@@ -56,6 +56,22 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
                 ...(workout.duration_minutes ? [{ label: 'Durée', value: `${workout.duration_minutes} min` }] : []),
                 ...(workout.volume_total_kg > 0 ? [{ label: 'Volume', value: `${Math.round(workout.volume_total_kg)} kg` }] : []),
               ],
+              exercises: [...exercises].sort((a: ExRow, b: ExRow) => a.order - b.order).map((ex: ExRow) => {
+                const sets = Array.isArray(ex.sets) ? ex.sets : []
+                const best = sets.reduce<SetRow | null>((b, s) => {
+                  if (!b) return s
+                  if ((s.weight_kg ?? 0) > (b.weight_kg ?? 0)) return s
+                  if ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) return s
+                  return b
+                }, null)
+                const topSet = best
+                  ? best.weight_kg && best.reps ? `${best.weight_kg} kg × ${best.reps}`
+                    : best.weight_kg ? `${best.weight_kg} kg`
+                    : best.reps ? `${best.reps} reps`
+                    : '—'
+                  : '—'
+                return { name: ex.name, topSet }
+              }),
             }} />
             <WorkoutActions workoutId={workout.id} />
           </div>

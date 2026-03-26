@@ -142,7 +142,7 @@ export default async function ActivityFeed({ currentUserId }: { currentUserId: s
                       {item.profile.username}
                     </Link>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>a nagé</span>
-                    <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--accent-blue)' }}>{item.distance_m >= 1000 ? `${(item.distance_m / 1000).toFixed(1)}km` : `${item.distance_m}m`}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--accent-blue)' }}>{item.distance_m}m</span>
                     <span className="session-badge-swim">Natation</span>
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>

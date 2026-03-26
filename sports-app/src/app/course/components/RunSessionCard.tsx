@@ -132,38 +132,42 @@ export default function RunSessionCard({ session, onDuplicate, onDelete, deletin
           )}
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <ShareButton session={{
               type: 'run',
-              title: `Course ${s.type} — ${s.distance_km.toFixed(2)} km`,
+              title: `${s.type} — ${s.distance_km.toFixed(2)} km`,
               date: s.date,
               stats: [
                 { label: 'Distance', value: `${s.distance_km.toFixed(2)} km` },
                 { label: 'Durée', value: formatDuration(s.duration_seconds) },
-                ...(avgPace > 0 ? [{ label: 'Allure', value: formatPace(avgPace) }] : []),
-                ...(s.calories ? [{ label: 'Calories', value: `${s.calories} kcal` }] : []),
-              ],
+                { label: 'Allure', value: avgPace > 0 ? formatPace(avgPace) : '-' },
+                { label: 'BPM moy.', value: s.avg_bpm ? `${s.avg_bpm}` : '-' },
+                { label: 'Calories', value: s.calories ? `${s.calories} kcal` : '-' },
+                { label: 'D+', value: s.elevation_pos ? `${s.elevation_pos}m` : '-' },
+              ]
             }} />
-            {onDuplicate && (
-              <button onClick={onDuplicate} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
-                <Copy size={14} /> Dupliquer
-              </button>
-            )}
-            {onDelete && (
-              confirmDelete ? (
-                <div style={{ display: 'flex', gap: '0.375rem', flex: 1 }}>
-                  <button onClick={onDelete} disabled={deleting} className="btn btn-danger btn-sm" style={{ flex: 1 }}>
-                    {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    Confirmer
-                  </button>
-                  <button onClick={() => setConfirmDelete(false)} className="btn btn-ghost btn-sm">Annuler</button>
-                </div>
-              ) : (
-                <button onClick={() => setConfirmDelete(true)} className="btn btn-danger btn-sm" style={{ flex: 1 }}>
-                  <Trash2 size={14} /> Supprimer
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {onDuplicate && (
+                <button onClick={onDuplicate} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
+                  <Copy size={14} /> Dupliquer
                 </button>
-              )
-            )}
+              )}
+              {onDelete && (
+                confirmDelete ? (
+                  <div style={{ display: 'flex', gap: '0.375rem', flex: 1 }}>
+                    <button onClick={onDelete} disabled={deleting} className="btn btn-danger btn-sm" style={{ flex: 1 }}>
+                      {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      Confirmer
+                    </button>
+                    <button onClick={() => setConfirmDelete(false)} className="btn btn-ghost btn-sm">Annuler</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDelete(true)} className="btn btn-danger btn-sm" style={{ flex: 1 }}>
+                    <Trash2 size={14} /> Supprimer
+                  </button>
+                )
+              )}
+            </div>
           </div>
         </div>
       )}

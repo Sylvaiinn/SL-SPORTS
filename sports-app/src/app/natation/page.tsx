@@ -2,8 +2,8 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   generateSwimSession,
@@ -87,7 +87,10 @@ type TabId = 'generate' | 'manual' | 'history'
 export default function NatationPage() {
   const supabase = createClient()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<TabId>('generate')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    searchParams.get('tab') === 'saisir' ? 'manual' : 'generate'
+  )
 
   // Generator state
   const [selectedStyle, setSelectedStyle] = useState<SwimStyle>('Endurance')
@@ -264,7 +267,7 @@ export default function NatationPage() {
                 const selected = !useCustom && selectedDistance === d
                 return (
                   <button key={d} onClick={() => { setSelectedDistance(d); setUseCustom(false) }} style={{ padding: '0.75rem 0.25rem', borderRadius: '0.75rem', border: `1px solid ${selected ? 'var(--accent-blue)' : 'var(--border)'}`, background: selected ? 'var(--accent-blue-glow)' : 'var(--bg-secondary)', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit', fontWeight: 700, color: selected ? 'var(--accent-blue)' : 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                    {(d / 1000).toFixed(1)}km
+                    {d}m
                   </button>
                 )
               })}
@@ -280,7 +283,7 @@ export default function NatationPage() {
               />
               {useCustom && customDistance && (
                 <span style={{ fontSize: '0.875rem', color: 'var(--accent-blue)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  {parseInt(customDistance) >= 1000 ? `${(parseInt(customDistance) / 1000).toFixed(2)}km` : `${customDistance}m`}
+                  {customDistance}m
                 </span>
               )}
             </div>

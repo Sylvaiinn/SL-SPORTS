@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Waves, ChevronDown, ChevronUp, Pencil, Trash2, Save, Loader2, X, CheckCircle, Play, History, Trophy, TrendingUp } from 'lucide-react'
+import { Waves, ChevronDown, ChevronUp, Pencil, Trash2, Save, Loader2, X, CheckCircle, Play, History, Trophy, TrendingUp, PlusCircle } from 'lucide-react'
 import ShareButton from '@/components/ShareButton'
 
 type SwimStyle = 'Endurance' | 'Vitesse' | 'Technique' | 'Mixte'
@@ -95,17 +95,6 @@ function SwimSessionCard({ session, onUpdated, onDeleted }: {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0, alignItems: 'center' }}>
-          <ShareButton session={{
-            type: 'swim',
-            title: `Natation ${session.style}`,
-            date: session.date,
-            stats: [
-              { label: 'Distance', value: session.distance_m >= 1000 ? `${(session.distance_m / 1000).toFixed(1)} km` : `${session.distance_m} m` },
-              { label: 'Style', value: session.style },
-              ...(allBlocks.length > 0 ? [{ label: 'Blocs', value: String(allBlocks.length) }] : []),
-              ...(plan?.level ? [{ label: 'Niveau', value: plan.level }] : []),
-            ],
-          }} />
           <button onClick={() => setEditingNotes(v => !v)} className="btn-icon" style={{ background: 'var(--accent-blue-glow)', color: 'var(--accent-blue)' }} title="Description">
             <Pencil size={14} />
           </button>
@@ -151,6 +140,17 @@ function SwimSessionCard({ session, onUpdated, onDeleted }: {
       {/* Expandable plan */}
       {open && plan && (
         <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '0.875rem' }}>
+          <ShareButton session={{
+            type: 'swim',
+            title: `Natation ${session.style}`,
+            date: session.date,
+            stats: [
+              { label: 'Distance', value: `${session.distance_m} m` },
+              { label: 'Style', value: session.style },
+              ...(allBlocks.length > 0 ? [{ label: 'Blocs', value: String(allBlocks.length) }] : []),
+              ...(plan?.level ? [{ label: 'Niveau', value: plan.level }] : []),
+            ],
+          }} />
           {[
             { label: 'Échauffement', blocks: plan.warmup ?? [], color: 'var(--accent-amber)' },
             { label: 'Corps', blocks: plan.main ?? [], color: 'var(--accent-blue)' },
@@ -266,12 +266,27 @@ export default function SwimHistoryPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '0.875rem', padding: '0.25rem', marginBottom: '1.5rem', border: '1px solid var(--border)', gap: '0.25rem' }}>
-        <button onClick={() => router.push('/natation')} style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 500, background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', transition: 'all 0.2s' }}>
-          <Play size={14} /> Générer
-        </button>
-        <button style={{ flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 700, background: 'var(--accent-blue)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}>
-          <History size={14} /> Historique
-        </button>
+        {[
+          { label: 'Générer', icon: <Play size={14} />, onClick: () => router.push('/natation'), active: false },
+          { label: 'Saisir', icon: <PlusCircle size={14} />, onClick: () => router.push('/natation?tab=saisir'), active: false },
+          { label: 'Historique', icon: <History size={14} />, onClick: undefined, active: true },
+        ].map(tab => (
+          <button
+            key={tab.label}
+            onClick={tab.onClick}
+            style={{
+              flex: 1, padding: '0.5rem', borderRadius: '0.625rem', border: 'none',
+              cursor: tab.onClick ? 'pointer' : 'default', fontFamily: 'inherit',
+              fontSize: '0.875rem', fontWeight: tab.active ? 700 : 500,
+              background: tab.active ? 'var(--accent-blue)' : 'transparent',
+              color: tab.active ? 'white' : 'var(--text-muted)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: '0.375rem', transition: 'all 0.2s',
+            }}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -289,7 +304,7 @@ export default function SwimHistoryPage() {
           {/* Global stats */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
             {[
-              { label: 'Distance totale', value: totalDistance >= 1000 ? `${(totalDistance / 1000).toFixed(1)} km` : `${totalDistance} m`, icon: Waves, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
+              { label: 'Distance totale', value: `${totalDistance} m`, icon: Waves, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
               { label: 'Séances total', value: String(totalSessions), icon: TrendingUp, color: 'var(--accent-blue)', bg: 'var(--accent-blue-glow)' },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className="stat-card" style={{ flexDirection: 'column', gap: '0.5rem' }}>
@@ -324,7 +339,7 @@ export default function SwimHistoryPage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                         <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#fbbf24' }}>
-                          {distance >= 1000 ? `${(distance / 1000).toFixed(1)} km` : `${distance} m`}
+                          {distance} m
                         </span>
                         <Trophy size={12} color="#fbbf24" />
                       </div>
