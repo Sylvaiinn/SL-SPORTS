@@ -92,7 +92,7 @@ export default async function ActivityFeed({ currentUserId }: { currentUserId: s
   ]
     .filter(item => item.profile != null)
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 12)
+    .slice(0, 4)
 
   if (items.length === 0) return null
 

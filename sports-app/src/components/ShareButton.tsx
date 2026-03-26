@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Share2, X, Download, Copy, Check, Image as ImageIcon } from 'lucide-react'
 
 export interface ShareSessionData {
@@ -21,14 +21,19 @@ const TYPE_CONFIG = {
 // ─── Canvas image generator ───────────────────────────────────────────────────
 async function generateImage(session: ShareSessionData): Promise<Blob | null> {
   const cfg = TYPE_CONFIG[session.type]
+  // Logical draw space stays 1080×1080; canvas renders at 720×720 (44% fewer pixels)
   const W = 1080
   const H = 1080
+  const CANVAS_SIZE = 720
 
   const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
+  canvas.width = CANVAS_SIZE
+  canvas.height = CANVAS_SIZE
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
+
+  // Scale everything down uniformly — all existing draw code unchanged
+  ctx.scale(CANVAS_SIZE / W, CANVAS_SIZE / H)
 
   // ── Background gradient ────────────────────────────────────────────────────
   const bgGrad = ctx.createLinearGradient(0, 0, W, H)
@@ -238,7 +243,7 @@ async function generateImage(session: ShareSessionData): Promise<Blob | null> {
     ctx.fillText(`@${session.username}`, W - 64, logoY)
   }
 
-  return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png', 0.95))
+  return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png', 0.85))
 }
 
 // ─── Canvas helpers ────────────────────────────────────────────────────────────
@@ -281,10 +286,35 @@ export default function ShareButton({ session }: { session: ShareSessionData }) 
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const blobRef = useRef<Blob | null>(null)
+  const generatingRef = useRef(false)
+
+  // Pre-generate image in background after first render
+  useEffect(() => {
+    if (generatingRef.current || blobRef.current) return
+    generatingRef.current = true
+
+    const run = async () => {
+      const blob = await generateImage(session)
+      if (blob) {
+        blobRef.current = blob
+        setImageUrl(URL.createObjectURL(blob))
+      }
+      generatingRef.current = false
+    }
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => run(), { timeout: 2000 })
+    } else {
+      const t = setTimeout(run, 300)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function openModal() {
     setOpen(true)
-    if (!imageUrl) {
+    // If not ready yet, generate now (fallback)
+    if (!imageUrl && !generatingRef.current) {
       setGenerating(true)
       const blob = await generateImage(session)
       if (blob) {
