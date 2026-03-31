@@ -3,20 +3,23 @@ import './globals.css'
 import NavbarWrapper from '@/components/NavbarWrapper'
 
 export const metadata: Metadata = {
-  title: 'SPORTS.SL — Suivi Sportif',
-  description: 'Suivez vos séances de musculation et de natation avec SPORTS.SL. Historique, templates, générateur de séances.',
+  title: 'SPORTS.SL — Application de Suivi Sportif par Sylvain LECLERC',
+  description: 'Application de suivi sportif créée par Sylvain LECLERC. Suivez vos séances de musculation et de natation. Historique, templates et générateur de séances.',
+  keywords: ['Sylvain LECLERC', 'suivi sportif', 'musculation', 'natation', 'application sport'],
   openGraph: {
-    title: 'SPORTS.SL — Suivi Sportif',
-    description: 'Suivez vos séances de musculation et de natation. Historique, templates, générateur de séances natation.',
+    title: 'SPORTS.SL — Suivi Sportif par Sylvain LECLERC',
+    description: 'Application de suivi de musculation et natation créée par Sylvain LECLERC.',
     type: 'website',
+    url: 'https://sports.sl-information.fr',
     locale: 'fr_FR',
     siteName: 'SPORTS.SL',
   },
   twitter: {
     card: 'summary',
-    title: 'SPORTS.SL — Suivi Sportif',
-    description: 'Application de suivi de musculation et natation.',
+    title: 'SPORTS.SL — Suivi Sportif par Sylvain LECLERC',
+    description: 'Application de suivi de musculation et natation par Sylvain LECLERC.',
   },
+  alternates: { canonical: 'https://sports.sl-information.fr' },
   applicationName: 'SPORTS.SL',
   appleWebApp: {
     capable: true,
