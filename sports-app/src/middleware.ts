@@ -29,6 +29,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // SEO — toujours accessible publiquement
+  if (pathname === '/sitemap.xml' || pathname === '/robots.txt') {
+    return supabaseResponse
+  }
+
   // Public routes
   // WebAuthn API routes handle their own auth — bypass middleware redirect
   if (pathname.startsWith('/api/webauthn/')) {
