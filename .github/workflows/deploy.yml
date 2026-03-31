@@ -22,6 +22,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ── Récupérer le Dockerfile depuis Refonteinfra ──
+      - name: Get Dockerfile from Refonteinfra
+        run: |
+          curl -fsSL \
+            "https://raw.githubusercontent.com/Sylvaiinn/Refonteinfra/master/sports/Dockerfile" \
+            -o Dockerfile
+          curl -fsSL \
+            "https://raw.githubusercontent.com/Sylvaiinn/Refonteinfra/master/sports/.dockerignore" \
+            -o .dockerignore
+
       # ── Docker Login ──
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -31,13 +41,16 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # ── Build & Push ──
-      # Le Dockerfile est à la racine du repo mais build depuis sports-app/
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=https://plcyogezfhubgrbbkddd.supabase.co
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsY3lvZ2V6Zmh1YmdyYmJrZGRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NTAyMjgsImV4cCI6MjA4OTIyNjIyOH0.4Xr5FjA_W4WGjGd072cx6SKaLUlvOerTqLicvIbWJ40
+            NEXT_PUBLIC_APP_DOMAIN=sports.sl-information.fr
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
