@@ -1,0 +1,58 @@
+# SL-SPORTS — Build & Deploy to K3s
+# Fichier à copier dans le repo SL-SPORTS : .github/workflows/deploy.yml
+name: Deploy Sports
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: sylvaiinn/sl-sports
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # ── Checkout ──
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Docker Login ──
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Build & Push ──
+      # Le Dockerfile est à la racine du repo mais build depuis sports-app/
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      # ── Deploy to K3s ──
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Deploy to K3s
+        run: |
+          kubectl set image deployment/sports \
+            sports=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n sports
+
+          kubectl rollout status deployment/sports -n sports --timeout=120s
