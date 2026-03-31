@@ -5,7 +5,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { cookies } from 'next/headers'
 
 const RP_ID = process.env.NEXT_PUBLIC_APP_DOMAIN ?? 'localhost'
-const ORIGIN = process.env.NEXT_PUBLIC_APP_ORIGIN ?? 'http://localhost:3000'
+const ORIGIN = RP_ID === 'localhost' ? 'http://localhost:3000' : `https://${RP_ID}`
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
